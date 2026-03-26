@@ -1,0 +1,26 @@
+# Core ML
+ultralytics
+torch
+torchvision
+transformers
+numpy
+Pillow
+
+# Video / Camera
+opencv-python-headless
+
+# Web API
+fastapi
+uvicorn[standard]
+
+# Config
+pydantic
+pydantic-settings
+pyyaml
+watchdog
+
+# Azure Event Hub (only needed when event_hub.enabled = true)
+azure-eventhub
+
+# Logging
+coloredlogs

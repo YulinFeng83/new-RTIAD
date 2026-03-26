@@ -1,0 +1,115 @@
+system:
+  fps_target: 15
+  frame_skip: 2
+  device: cpu
+  model_precision: fp32
+  log_level: INFO
+cameras:
+- id: cam_indoor
+  url: ./data/videos/indoor.mp4
+  scene_type: indoor
+  loop: true
+  zones:
+  - id: zone_1774556492729
+    type: bidirectional
+    polygon:
+    - - 1059
+      - 414
+    - - 821
+      - 704
+    - - 1255
+      - 707
+    - - 1258
+      - 474
+    - - 1059
+      - 417
+    - - 1059
+      - 417
+    direction:
+    - -0.9066816222348387
+    - -0.42181564207791183
+    name: zone_1774556492729
+detection:
+  model: yolov8s.pt
+  confidence: 0.5
+  iou_threshold: 0.45
+tracking:
+  tracker: bytetrack
+  max_lost_frames: 30
+employee_detection:
+  threshold: 0.65
+  sticky_labels: true
+  re_eval_threshold: 0.3
+  classify_every_n_frames: 15
+  max_employees: 2
+  strategies:
+  - name: dress_code
+    enabled: true
+    weight: 0.7
+    model: openai/clip-vit-base-patch32
+    prompts:
+      positive:
+      - person wearing a dark red horizontally striped long sleeve shirt and black pants
+      - person in a maroon striped top with black trousers
+      - store worker in a red and dark striped pullover
+      negative:
+      - person wearing a blue jacket or coat
+      - person in a red or pink solid colored top without stripes
+      - person wearing a bright colored shirt
+      - person in a winter puffer coat or heavy jacket
+      - customer shopping in casual clothes
+      - person wearing a white or cream colored top
+      - elderly person in a cardigan or knitted sweater
+      - person in jeans and a hoodie
+      - person wearing a black coat or dark suit
+    pre_open_window_minutes: 60
+    max_first_arrivals: 20
+  - name: first_arrival
+    enabled: true
+    weight: 0.1
+    model: ''
+    prompts: null
+    pre_open_window_minutes: 60
+    max_first_arrivals: 20
+store:
+  name: Store Alpha
+  open_time: 09:00
+  close_time: '21:00'
+event_hub:
+  enabled: false
+  connection_string: ''
+  event_hub_name: ''
+  batch_size: 10
+  send_interval_seconds: 5
+overlay:
+  show_bboxes: true
+  show_labels: true
+  show_zones: true
+  show_stats_hud: true
+  bbox_thickness: 2
+  font_scale: 0.6
+  colors:
+    employee:
+    - 0
+    - 200
+    - 0
+    customer:
+    - 200
+    - 100
+    - 0
+    unknown:
+    - 128
+    - 128
+    - 128
+    entry_zone:
+    - 0
+    - 200
+    - 0
+    exit_zone:
+    - 0
+    - 0
+    - 200
+    bidirectional_zone:
+    - 0
+    - 200
+    - 200
