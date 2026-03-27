@@ -90,15 +90,51 @@ class ZoneManager:
                 if track.track_id in self._crossed_tracks.get(zone.zone_id, set()):
                     continue
 
+                # crossing = detect_crossing(prev, curr, zone)
+                # if crossing is not None:
+                #     self._crossed_tracks[zone.zone_id].add(track.track_id)
+                #     results.append((track, crossing))
+                #     logger.debug(
+                #         "Crossing: track %d → zone %s (%s)",
+                #         track.track_id,
+                #         zone.zone_id,
+                #         crossing.direction,
+                #     )
                 crossing = detect_crossing(prev, curr, zone)
                 if crossing is not None:
                     self._crossed_tracks[zone.zone_id].add(track.track_id)
+
+                    # Track entry / exit counters
+                    if crossing.direction == "entering":
+                        track.entry_count += 1
+                    else:
+                        track.exit_count += 1
+
+                    # Keep a simple record of visited zones
+                    if zone.zone_id not in track.zones_visited:
+                        track.zones_visited.append(zone.zone_id)
+
+                    # Update derived behavior features based on zone naming conventions
+                    if "staff" in zone.zone_id.lower():
+                        track.derived_features["staff_zone_visit_ratio"] = 1.0
+
+                    if "counter" in zone.zone_id.lower() or "checkout" in zone.zone_id.lower():
+                        track.derived_features["counter_presence_ratio"] = 1.0
+
+                    # Simple re-entry pattern score based on total crossings
+                    total_crossings = track.entry_count + track.exit_count
+                    track.derived_features["reentry_pattern_score"] = min(
+                        1.0, float(total_crossings) / 6.0
+                    )
+
                     results.append((track, crossing))
                     logger.debug(
-                        "Crossing: track %d → zone %s (%s)",
+                        "Crossing: track %d → zone %s (%s) | entry_count=%d exit_count=%d",
                         track.track_id,
                         zone.zone_id,
                         crossing.direction,
+                        track.entry_count,
+                        track.exit_count,
                     )
 
         return results
