@@ -116,6 +116,8 @@ class CameraPipeline:
             "current_time": ts,
             "frame_id": frame_id,
         }
+        context["pre_open_entry_flag"] = 0.0
+        context["first_n_entries_flag"] = 0.0
         self._classifier.classify_tracks(active_tracks, frame, frame_id, context)
 
         crossings = self._zone_manager.check_crossings(active_tracks, self.camera_id)
