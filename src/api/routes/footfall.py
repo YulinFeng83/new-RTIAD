@@ -20,4 +20,7 @@ async def get_current_footfall():
         total_exits=stats.total_exits,
         current_in_store=stats.current_in_store,
         employees_filtered=stats.employees_filtered,
+        total_group_entries=stats.total_group_entries,
+        total_group_exits=stats.total_group_exits,
+        current_groups_in_store=stats.current_groups_in_store,
     )

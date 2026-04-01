@@ -46,8 +46,10 @@ class Track:
     entry_count: int = 0
     exit_count: int = 0
     zones_visited: list[str] = field(default_factory=list)
+    zone_visit_counts: dict[str, int] = field(default_factory=dict)
     zone_entry_times: dict[str, float] = field(default_factory=dict)
     zone_dwell_seconds: dict[str, float] = field(default_factory=dict)
+    active_zone_session_ids: dict[str, str] = field(default_factory=dict)
 
     employee_probability: float = 0.0
     customer_probability: float = 0.0
@@ -59,6 +61,9 @@ class Track:
     clip_signals: dict[str, float] = field(default_factory=dict)
     derived_features: dict[str, float] = field(default_factory=dict)
     decision_reasons: list[str] = field(default_factory=list)
+
+    counted_entry: bool = False
+    counted_exit: bool = False
 
     @property
     def current_bbox(self) -> Optional[tuple[int, int, int, int]]:
@@ -75,6 +80,10 @@ class Track:
     @property
     def session_duration_seconds(self) -> float:
         return max(0.0, self.last_seen - self.first_seen)
+
+    @property
+    def total_dwell_seconds(self) -> float:
+        return sum(self.zone_dwell_seconds.values())
 
     @property
     def current_speed(self) -> float:
@@ -98,6 +107,43 @@ class Track:
         cy = (bbox[1] + bbox[3]) // 2
         self.history.append(TrackPoint(bbox=bbox, centroid=(cx, cy), timestamp=ts, frame_id=frame_id))
         self.last_seen = ts
+
+    def mark_zone_entered(self, zone_id: str, timestamp: float) -> None:
+        self.zone_entry_times[zone_id] = timestamp
+        if zone_id not in self.zones_visited:
+            self.zones_visited.append(zone_id)
+
+    def mark_zone_exited(self, zone_id: str, timestamp: float) -> float:
+        start = self.zone_entry_times.pop(zone_id, None)
+        if start is None:
+            return 0.0
+        dwell = max(0.0, timestamp - start)
+        self.zone_dwell_seconds[zone_id] = self.zone_dwell_seconds.get(zone_id, 0.0) + dwell
+        return dwell
+
+    def start_zone_session(self, zone_id: str, timestamp: Optional[float] = None) -> str:
+        ts = timestamp or time.time()
+        visit_count = self.zone_visit_counts.get(zone_id, 0) + 1
+        self.zone_visit_counts[zone_id] = visit_count
+        self.entry_count += 1
+        self.mark_zone_entered(zone_id, ts)
+        session_id = f"{self.camera_id}:{self.track_id}:{zone_id}:{visit_count}"
+        self.active_zone_session_ids[zone_id] = session_id
+        return session_id
+
+    def end_zone_session(
+        self,
+        zone_id: str,
+        timestamp: Optional[float] = None,
+    ) -> tuple[Optional[str], float]:
+        ts = timestamp or time.time()
+        self.exit_count += 1
+        session_id = self.active_zone_session_ids.pop(zone_id, None)
+        dwell_seconds = self.mark_zone_exited(zone_id, ts)
+        return session_id, dwell_seconds
+
+    def active_zone_session_id(self, zone_id: str) -> Optional[str]:
+        return self.active_zone_session_ids.get(zone_id)
 
     def crop_from_frame(self, frame: np.ndarray) -> Optional[np.ndarray]:
         """Extract the person crop from the given frame using the latest bbox."""

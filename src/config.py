@@ -38,6 +38,7 @@ class ZoneConfig(BaseModel):
     polygon: list[list[int]] = Field(default_factory=list)
     direction: list[float] = Field(default_factory=lambda: [0.0, -1.0])
     name: str = ""
+    promo_zone_flag: bool = False
 
 
 class CameraConfig(BaseModel):
@@ -84,9 +85,12 @@ class EmployeeDetectionConfig(BaseModel):
 
 
 class StoreConfig(BaseModel):
+    tenant_id: str = "tenant_1"
+    store_id: str = "store_1"
     name: str = "Store Alpha"
     open_time: str = "09:00"
     close_time: str = "21:00"
+    promo_zone_ids: list[str] = Field(default_factory=list)
 
 
 class EventHubConfig(BaseModel):

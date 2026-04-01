@@ -1,26 +1,36 @@
-"""
-Event dataclasses for the RetailVision event system.
-
-All events are JSON-serializable for Azure Event Hub publishing.
-"""
-
 from __future__ import annotations
 
 import json
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Optional
 
 
 @dataclass
-class CrossingEvent:
-    track_id: int
-    zone_id: str
+class BaseEvent:
+    event_type: str
+    tenant_id: str
+    store_id: str
     camera_id: str
-    direction: str             # "entering" or "exiting"
-    person_label: str          # "employee", "customer", "unknown"
     timestamp: float = field(default_factory=time.time)
-    centroid: tuple[int, int] = (0, 0)
+    track_id: Optional[int] = None
+    group_id: Optional[str] = None
+    zone_id: Optional[str] = None
+    direction: Optional[str] = None
+    classification_label: Optional[str] = None
+    employee_probability: float = 0.0
+    customer_probability: float = 0.0
+    unknown_probability: float = 1.0
+    group_probability: float = 0.0
+    dwell_seconds: float = 0.0
+    zone_session_id: Optional[str] = None
+    has_dwell_flag: bool = False
+    window_start: Optional[float] = None
+    window_end: Optional[float] = None
+    group_visitor_count: int = 0
+    zone_visitors: int = 0
+    max_dwell_bucket: Optional[str] = None
+    promo_zone_flag: bool = False
 
     def to_json(self) -> str:
         return json.dumps(asdict(self))
@@ -28,14 +38,15 @@ class CrossingEvent:
 
 @dataclass
 class FootfallUpdate:
-    event_type: str            # "entry" or "exit"
-    track_id: int
-    zone_id: str
+    event_type: str
+    tenant_id: str
+    store_id: str
     camera_id: str
     total_entries: int = 0
     total_exits: int = 0
     current_in_store: int = 0
     employees_filtered: int = 0
+    shopping_party_entries: int = 0
     timestamp: float = field(default_factory=time.time)
 
     def to_json(self) -> str:

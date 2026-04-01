@@ -24,6 +24,7 @@ class Zone:
     zone_type: ZoneType = ZoneType.BIDIRECTIONAL
     direction_vector: tuple[float, float] = (0.0, -1.0)  # Normal: "into store"
     name: str = ""
+    promo_zone_flag: bool = False
 
     @property
     def is_entry(self) -> bool:

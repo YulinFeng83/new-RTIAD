@@ -7,23 +7,25 @@ Chains: frame skip → detect + track → classify → zone crossing → footfal
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 import threading
 import time
-from dataclasses import dataclass
 from typing import Any, Optional
 
 import numpy as np
 
 from src.camera.stream import VideoStream
+from src.analytics.group_likelihood import GroupLikelihoodEngine
 from src.config import AppConfig
 from src.counting.footfall_counter import FootfallCounter
+from src.events.types import BaseEvent, FootfallUpdate
 from src.events.event_hub import EventHubProducer
-from src.events.types import CrossingEvent, FootfallUpdate
 from src.models.employee_classifier import EmployeeClassifier
 from src.rendering.overlay import OverlayRenderer
 from src.tracking.track import Track
 from src.tracking.tracker import PersonTracker
+from src.zones.crossing_detector import CrossingResult
 from src.zones.zone_manager import ZoneManager
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,7 @@ class CameraPipeline:
         self._overlay = overlay_renderer
         self._event_hub = event_hub
         self._config = config
+        self._group_engine = GroupLikelihoodEngine()
 
         self._annotated_frame: Optional[np.ndarray] = None
         self._frame_lock = threading.Lock()
@@ -112,46 +115,97 @@ class CameraPipeline:
 
         active_tracks = self._tracker.update(frame, frame_id)
 
+        self._update_track_behavior_context(active_tracks, ts, frame_id)
+
         context: dict[str, Any] = {
             "current_time": ts,
             "frame_id": frame_id,
+            "pre_open_entry_flag": self._pre_open_entry_flag(ts),
+            "first_n_entries_flag": 1.0 if frame_id < 300 else 0.0,
+            "classification_events": [],
         }
-        context["pre_open_entry_flag"] = 0.0
-        context["first_n_entries_flag"] = 0.0
         self._classifier.classify_tracks(active_tracks, frame, frame_id, context)
 
-        crossings = self._zone_manager.check_crossings(active_tracks, self.camera_id)
+        self._apply_group_assignments(active_tracks)
 
-        for track, crossing in crossings:
-            zone = self._zone_manager.get_zone(crossing.zone_id)
+        for payload in context["classification_events"]:
+            track = next((candidate for candidate in active_tracks if candidate.track_id == payload["track_id"]), None)
+            if track is None:
+                continue
+            self._event_hub.send(BaseEvent(
+                event_type="classification_updated",
+                tenant_id=self._config.store.tenant_id,
+                store_id=self._config.store.store_id,
+                camera_id=self.camera_id,
+                timestamp=ts,
+                track_id=track.track_id,
+                group_id=track.group_id,
+                classification_label=payload["classification_label"],
+                employee_probability=payload["employee_probability"],
+                customer_probability=payload["customer_probability"],
+                unknown_probability=payload["unknown_probability"],
+                group_probability=track.group_probability,
+                window_start=self._window_start(ts),
+                window_end=self._window_end(ts),
+            ))
+
+        for track, event_data in self._zone_manager.check_crossings(active_tracks, self.camera_id):
+            event_timestamp = float(event_data.get("timestamp", ts))
+            zone_id = str(event_data["zone_id"])
+            zone = self._zone_manager.get_zone(zone_id)
             if zone is None:
                 continue
 
-            crossing_event = CrossingEvent(
-                track_id=track.track_id,
-                zone_id=crossing.zone_id,
+            dwell_seconds = float(event_data.get("dwell_seconds", 0.0))
+            base_event = BaseEvent(
+                event_type=str(event_data["event_type"]),
+                tenant_id=self._config.store.tenant_id,
+                store_id=self._config.store.store_id,
                 camera_id=self.camera_id,
-                direction=crossing.direction,
-                person_label=track.label.value,
-                timestamp=ts,
-                centroid=track.current_centroid or (0, 0),
+                timestamp=event_timestamp,
+                track_id=track.track_id,
+                group_id=track.group_id,
+                zone_id=zone_id,
+                direction=event_data.get("direction"),
+                classification_label=track.label.value,
+                employee_probability=track.employee_probability,
+                customer_probability=track.customer_probability,
+                unknown_probability=track.unknown_probability,
+                group_probability=track.group_probability,
+                dwell_seconds=dwell_seconds,
+                zone_session_id=event_data.get("zone_session_id"),
+                has_dwell_flag=bool(event_data.get("has_dwell_flag", dwell_seconds > 0.0)),
+                window_start=self._window_start(event_timestamp),
+                window_end=self._window_end(event_timestamp),
+                group_visitor_count=self._group_visitor_count(track, active_tracks),
+                zone_visitors=int(event_data.get("zone_visitors", 0)),
+                max_dwell_bucket=self._dwell_bucket(dwell_seconds),
+                promo_zone_flag=zone_id in self._config.store.promo_zone_ids,
             )
-            self._event_hub.send(crossing_event.__dict__)
+            self._event_hub.send(base_event)
 
-            ff_event = self._footfall.process_crossing(track, crossing, zone, ts)
-            if ff_event:
-                update = FootfallUpdate(
-                    event_type=ff_event.event_type,
-                    track_id=ff_event.track_id,
-                    zone_id=ff_event.zone_id,
-                    camera_id=self.camera_id,
-                    total_entries=ff_event.stats_snapshot.get("total_entries", 0),
-                    total_exits=ff_event.stats_snapshot.get("total_exits", 0),
-                    current_in_store=ff_event.stats_snapshot.get("current_in_store", 0),
-                    employees_filtered=ff_event.stats_snapshot.get("employees_filtered", 0),
-                    timestamp=ts,
+            if base_event.event_type == "door_crossed":
+                crossing = CrossingResult(zone_id=zone_id, direction=base_event.direction or "entering")
+                ff_event = self._footfall.process_crossing(
+                    track,
+                    crossing,
+                    zone,
+                    event_timestamp,
+                    zone_session_id=base_event.zone_session_id,
                 )
-                self._event_hub.send(update.__dict__)
+                if ff_event:
+                    self._event_hub.send(FootfallUpdate(
+                        event_type="footfall_updated",
+                        tenant_id=self._config.store.tenant_id,
+                        store_id=self._config.store.store_id,
+                        camera_id=self.camera_id,
+                        total_entries=ff_event.stats_snapshot.get("total_entries", 0),
+                        total_exits=ff_event.stats_snapshot.get("total_exits", 0),
+                        current_in_store=ff_event.stats_snapshot.get("current_in_store", 0),
+                        employees_filtered=ff_event.stats_snapshot.get("employees_filtered", 0),
+                        shopping_party_entries=ff_event.stats_snapshot.get("shopping_party_entries", 0),
+                        timestamp=event_timestamp,
+                    ))
 
         zones = self._zone_manager.get_zones_for_camera(self.camera_id)
         stats = self._footfall.stats
@@ -161,3 +215,53 @@ class CameraPipeline:
 
     def on_config_change(self, config: AppConfig) -> None:
         self._config = config
+
+    def _update_track_behavior_context(self, tracks: list[Track], timestamp: float, frame_id: int) -> None:
+        pre_open_flag = self._pre_open_entry_flag(timestamp)
+        first_n_entries_flag = 1.0 if frame_id < 300 else 0.0
+        for track in tracks:
+            track.derived_features["pre_open_entry_flag"] = pre_open_flag
+            track.derived_features["first_n_entries_flag"] = first_n_entries_flag
+
+    def _pre_open_entry_flag(self, timestamp: float) -> float:
+        now = datetime.fromtimestamp(timestamp)
+        open_hour, open_minute = [int(part) for part in self._config.store.open_time.split(":", 1)]
+        open_minutes = open_hour * 60 + open_minute
+        now_minutes = now.hour * 60 + now.minute
+        window_start = open_minutes - 60
+        return 1.0 if window_start <= now_minutes < open_minutes else 0.0
+
+    def _apply_group_assignments(self, tracks: list[Track]) -> None:
+        assignments = self._group_engine.assign_groups(tracks)
+        for track in tracks:
+            assignment = assignments.get(track.track_id)
+            if assignment is None:
+                track.group_id = None
+                track.group_probability = 0.0
+                continue
+            track.group_id = assignment["group_id"]
+            track.group_probability = assignment["group_probability"]
+            if assignment["signals"]:
+                track.derived_features["group_signals"] = assignment["signals"]
+
+    def _window_start(self, timestamp: float) -> float:
+        return timestamp - (timestamp % 300)
+
+    def _window_end(self, timestamp: float) -> float:
+        return self._window_start(timestamp) + 300.0
+
+    def _group_visitor_count(self, track: Track, tracks: list[Track]) -> int:
+        if not track.group_id:
+            return 1
+        return sum(1 for candidate in tracks if candidate.group_id == track.group_id)
+
+    def _dwell_bucket(self, dwell_seconds: float) -> str | None:
+        if dwell_seconds <= 0:
+            return None
+        if dwell_seconds < 30:
+            return "<30s"
+        if dwell_seconds < 60:
+            return "30–60s"
+        if dwell_seconds < 120:
+            return "60–120s"
+        return ">120s"
