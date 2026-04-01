@@ -29,6 +29,27 @@ cameras:
     - -0.9066816222348387
     - -0.42181564207791183
     name: zone_1774556492729
+    promo_zone_flag: false
+  - id: zone_1774647127885
+    type: staff_only
+    polygon:
+    - - 7
+      - 121
+    - - 167
+      - 115
+    - - 426
+      - 635
+    - - 6
+      - 699
+    - - 7
+      - 130
+    - - 7
+      - 130
+    direction:
+    - -0.9435804645659694
+    - 0.3311433328476799
+    name: poc counter
+    promo_zone_flag: false
 detection:
   model: yolov8s.pt
   confidence: 0.5
@@ -49,7 +70,8 @@ employee_detection:
     model: openai/clip-vit-base-patch32
     prompts:
       positive:
-      - person wearing a dark red horizontally striped long sleeve shirt and black pants
+      - person wearing a dark red horizontally striped long sleeve shirt and black
+        pants
       - person in a maroon striped top with black trousers
       - store worker in a red and dark striped pullover
       negative:
@@ -64,19 +86,15 @@ employee_detection:
       - person wearing a black coat or dark suit
     pre_open_window_minutes: 60
     max_first_arrivals: 20
-  - name: first_arrival
-    enabled: true
-    weight: 0.1
-    model: ''
-    prompts: null
-    pre_open_window_minutes: 60
-    max_first_arrivals: 20
 store:
+  tenant_id: tenant_1
+  store_id: store_1
   name: Store Alpha
   open_time: 09:00
   close_time: '21:00'
+  promo_zone_ids: []
 event_hub:
-  enabled: false
+  enabled: true
   connection_string: ''
   event_hub_name: ''
   batch_size: 10

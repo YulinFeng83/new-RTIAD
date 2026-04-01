@@ -36,6 +36,9 @@ class FootfallStatsResponse(BaseModel):
     total_exits: int
     current_in_store: int
     employees_filtered: int
+    total_group_entries: int
+    total_group_exits: int
+    current_groups_in_store: int
 
 
 class ConfigUpdateRequest(BaseModel):

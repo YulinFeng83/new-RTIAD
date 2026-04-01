@@ -64,6 +64,18 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
     onZoneChange()
   }
 
+  const zoneColor = (zoneType: string) => {
+    if (zoneType === 'entry') return '#00c800'
+    if (zoneType === 'exit') return '#c80000'
+    if (zoneType === 'staff_only') return '#ff8c00'
+    return '#c8c800'
+  }
+
+  const zoneTypeLabel = (zoneType: string) => {
+    if (zoneType === 'staff_only') return 'restricted / staff only'
+    return zoneType
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -143,19 +155,12 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
                 <div className="flex items-center gap-2 mb-1">
                   <span
                     className="w-2.5 h-2.5 rounded-full"
-                    style={{
-                      backgroundColor:
-                        zone.type === 'entry'
-                          ? '#00c800'
-                          : zone.type === 'exit'
-                          ? '#c80000'
-                          : '#c8c800',
-                    }}
+                    style={{ backgroundColor: zoneColor(zone.type) }}
                   />
                   <span className="font-medium text-sm">{zone.name || zone.id}</span>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Type: {zone.type} | Points: {zone.polygon.length}
+                  Type: {zoneTypeLabel(zone.type)} | Points: {zone.polygon.length}
                 </p>
               </div>
             ))}
@@ -167,7 +172,7 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
         <div className="text-center text-gray-500 py-8 border border-dashed border-gray-800 rounded-lg">
           <p>No zones configured for this camera.</p>
           <p className="text-sm mt-1">
-            Click <strong>"Draw Zones"</strong> to add entry/exit zones.
+            Click <strong>"Draw Zones"</strong> to add entry, exit, bidirectional, or restricted zones.
           </p>
         </div>
       )}

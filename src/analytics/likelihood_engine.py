@@ -12,6 +12,7 @@ class RoleWeights:
     first_n_entries_flag: float = 1.8
     repeat_presence_days_norm: float = 2.2
     staff_zone_visit_ratio: float = 3.0
+    staff_zone_dwell_ratio: float = 2.6
     counter_presence_ratio: float = 2.1
     long_duration_norm: float = 1.6
     reentry_pattern_score: float = 1.2
@@ -41,6 +42,7 @@ class EmployeeLikelihoodEngine:
             w.first_n_entries_flag * features.first_n_entries_flag +
             w.repeat_presence_days_norm * features.repeat_presence_days_norm +
             w.staff_zone_visit_ratio * features.staff_zone_visit_ratio +
+            w.staff_zone_dwell_ratio * features.staff_zone_dwell_ratio +
             w.counter_presence_ratio * features.counter_presence_ratio +
             w.long_duration_norm * features.long_duration_norm +
             w.reentry_pattern_score * features.reentry_pattern_score +

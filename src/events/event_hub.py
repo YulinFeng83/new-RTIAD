@@ -12,6 +12,7 @@ import logging
 import threading
 import time
 from collections import deque
+from dataclasses import asdict, is_dataclass
 from typing import Any, Optional
 
 from src.config import EventHubConfig
@@ -66,10 +67,20 @@ class EventHubProducer:
             except Exception:
                 pass
 
-    def send(self, event: dict[str, Any]) -> None:
+    def send(self, event: Any) -> None:
         """Queue an event for batched sending."""
+        payload = self._normalize_event(event)
         with self._lock:
-            self._buffer.append(event)
+            self._buffer.append(payload)
+
+    def _normalize_event(self, event: Any) -> dict[str, Any]:
+        if isinstance(event, dict):
+            return event
+        if hasattr(event, "to_dict"):
+            return event.to_dict()
+        if is_dataclass(event):
+            return asdict(event)
+        raise TypeError(f"Unsupported event payload type: {type(event).__name__}")
 
     def _flush_loop(self) -> None:
         while self._running:

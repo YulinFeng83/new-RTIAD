@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from dataclasses import dataclass, field
 
 from src.tracking.track import PersonLabel, Track
@@ -24,6 +25,10 @@ class FootfallStats:
     total_exits: int = 0
     current_in_store: int = 0
     employees_filtered: int = 0
+    shopping_party_entries: int = 0
+    total_group_entries: int = 0
+    total_group_exits: int = 0
+    current_groups_in_store: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -31,6 +36,10 @@ class FootfallStats:
             "total_exits": self.total_exits,
             "current_in_store": self.current_in_store,
             "employees_filtered": self.employees_filtered,
+            "shopping_party_entries": self.shopping_party_entries,
+            "total_group_entries": self.total_group_entries,
+            "total_group_exits": self.total_group_exits,
+            "current_groups_in_store": self.current_groups_in_store,
         }
 
 
@@ -42,6 +51,10 @@ class FootfallEvent:
     camera_id: str
     person_label: str
     timestamp: float
+    group_id: str | None = None
+    group_probability: float = 0.0
+    people_count: int = 1
+    shopping_party_count: int = 1
     stats_snapshot: dict = field(default_factory=dict)
 
 
@@ -61,6 +74,10 @@ class FootfallCounter:
                 total_exits=self._stats.total_exits,
                 current_in_store=self._stats.current_in_store,
                 employees_filtered=self._stats.employees_filtered,
+                shopping_party_entries=self._stats.shopping_party_entries,
+                total_group_entries=self._stats.total_group_entries,
+                total_group_exits=self._stats.total_group_exits,
+                current_groups_in_store=self._stats.current_groups_in_store,
             )
 
     def process_crossing(
@@ -69,25 +86,17 @@ class FootfallCounter:
         crossing: CrossingResult,
         zone: Zone,
         timestamp: float,
+        zone_session_id: str | None = None,
     ) -> FootfallEvent | None:
         """
         Process a zone crossing event. Returns a FootfallEvent if it's a
         countable customer crossing, or None if filtered.
         """
-        if track.label == PersonLabel.EMPLOYEE:
+        if track.label == PersonLabel.EMPLOYEE or track.employee_probability >= 0.75:
             with self._lock:
                 self._stats.employees_filtered += 1
             logger.debug("Filtered employee track %d at zone %s", track.track_id, crossing.zone_id)
             return None
-
-        is_entry = (
-            (crossing.direction == "entering" and zone.is_entry) or
-            (crossing.direction == "exiting" and zone.zone_type == ZoneType.EXIT)
-        )
-        is_exit = (
-            (crossing.direction == "exiting" and zone.is_exit) or
-            (crossing.direction == "entering" and zone.zone_type == ZoneType.EXIT)
-        )
 
         if crossing.direction == "entering" and zone.is_entry:
             event_type = "entry"
@@ -102,12 +111,26 @@ class FootfallCounter:
 
         with self._lock:
             if event_type == "entry":
+                if track.counted_entry:
+                    return None
+                track.counted_entry = True
                 self._stats.total_entries += 1
+                if track.group_id:
+                    self._stats.shopping_party_entries += 1
+                    self._stats.total_group_entries += 1
             elif event_type == "exit":
+                if track.counted_exit:
+                    return None
+                track.counted_exit = True
                 self._stats.total_exits += 1
+                if track.group_id:
+                    self._stats.total_group_exits += 1
 
             self._stats.current_in_store = max(
                 0, self._stats.total_entries - self._stats.total_exits
+            )
+            self._stats.current_groups_in_store = max(
+                0, self._stats.total_group_entries - self._stats.total_group_exits
             )
             snapshot = self._stats.to_dict()
 
@@ -118,6 +141,10 @@ class FootfallCounter:
             camera_id=track.camera_id,
             person_label=track.label.value,
             timestamp=timestamp,
+            group_id=track.group_id,
+            group_probability=track.group_probability,
+            people_count=1,
+            shopping_party_count=1 if event_type == "entry" and track.group_id else 0,
             stats_snapshot=snapshot,
         )
 

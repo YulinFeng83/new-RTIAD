@@ -63,6 +63,18 @@ class DressCodeStrategy(ClassificationStrategy):
 
         with torch.no_grad():
             self._text_embeds = self._model.get_text_features(**inputs)
+            if not isinstance(self._text_embeds, torch.Tensor):
+                if hasattr(self._text_embeds, "text_embeds"):
+                    self._text_embeds = self._text_embeds.text_embeds
+                elif hasattr(self._text_embeds, "pooler_output") and hasattr(self._model, "text_projection"):
+                    pooled = self._text_embeds.pooler_output
+                    projection = self._model.text_projection
+                    if pooled.shape[-1] == projection.in_features:
+                        self._text_embeds = projection(pooled)
+                    else:
+                        self._text_embeds = pooled
+                else:
+                    raise TypeError("Unsupported output type from CLIP text encoder")
             self._text_embeds = self._text_embeds / self._text_embeds.norm(dim=-1, keepdim=True)
 
         logger.info(
@@ -93,6 +105,18 @@ class DressCodeStrategy(ClassificationStrategy):
 
         with torch.no_grad():
             image_embeds = self._model.get_image_features(**inputs)
+            if not isinstance(image_embeds, torch.Tensor):
+                if hasattr(image_embeds, "image_embeds"):
+                    image_embeds = image_embeds.image_embeds
+                elif hasattr(image_embeds, "pooler_output") and hasattr(self._model, "visual_projection"):
+                    pooled = image_embeds.pooler_output
+                    projection = self._model.visual_projection
+                    if pooled.shape[-1] == projection.in_features:
+                        image_embeds = projection(pooled)
+                    else:
+                        image_embeds = pooled
+                else:
+                    raise TypeError("Unsupported output type from CLIP image encoder")
             image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
 
             logit_scale = self._model.logit_scale.exp()
@@ -108,6 +132,25 @@ class DressCodeStrategy(ClassificationStrategy):
 
     def _score_single(self, crop: np.ndarray) -> float:
         return self.score_batch([crop])[0]
+    
+    def score_signals(self, crop: Optional[np.ndarray]) -> dict[str, float]:
+        if crop is None or self._model is None or self._processor is None:
+            return {
+                "uniform_similarity": 0.5,
+                "apron_similarity": 0.5,
+                "badge_similarity": 0.5,
+                "customer_similarity": 0.5,
+            }
+
+        employee_score = self._score_single(crop)
+        customer_score = 1.0 - employee_score
+
+        return {
+            "uniform_similarity": employee_score,
+            "apron_similarity": employee_score,
+            "badge_similarity": employee_score,
+            "customer_similarity": customer_score,
+        }
 
     def on_config_change(self, strategy_config: dict) -> None:
         prompts = strategy_config.get("prompts", {})

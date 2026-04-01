@@ -39,12 +39,21 @@ const ZONE_COLORS: Record<string, string> = {
   entry: 'rgba(0, 200, 0, 0.4)',
   exit: 'rgba(200, 0, 0, 0.4)',
   bidirectional: 'rgba(200, 200, 0, 0.4)',
+  staff_only: 'rgba(255, 140, 0, 0.4)',
 }
 
 const ZONE_BORDER_COLORS: Record<string, string> = {
   entry: '#00c800',
   exit: '#c80000',
   bidirectional: '#c8c800',
+  staff_only: '#ff8c00',
+}
+
+const ZONE_TYPE_LABELS: Record<string, string> = {
+  entry: 'Entry',
+  exit: 'Exit',
+  bidirectional: 'Bidirectional',
+  staff_only: 'Restricted / Staff Only',
 }
 
 type DrawPhase = 'drawing' | 'set_direction' | 'ready'
@@ -324,6 +333,7 @@ export default function ZoneDrawer({
           <option value="entry">Entry</option>
           <option value="exit">Exit</option>
           <option value="bidirectional">Bidirectional</option>
+          <option value="staff_only">Restricted / Staff Only</option>
         </select>
 
         <input
@@ -365,7 +375,7 @@ export default function ZoneDrawer({
                     style={{ backgroundColor: ZONE_BORDER_COLORS[zone.type] || '#888' }}
                   />
                   <span className="text-sm">{zone.name || zone.id}</span>
-                  <span className="text-xs text-gray-500">{zone.type}</span>
+                  <span className="text-xs text-gray-500">{ZONE_TYPE_LABELS[zone.type] || zone.type}</span>
                 </div>
                 <button
                   onClick={() => handleDeleteZone(zone.id)}
