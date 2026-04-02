@@ -6,9 +6,9 @@ system:
   log_level: INFO
 cameras:
 - id: cam_indoor
-  url: ./data/videos/indoor.mp4
+  url: "rtsp://admin:Royalcyber26@192.168.7.40:10554/tcp/av0_0"
   scene_type: indoor
-  loop: true
+  loop: false
   zones:
   - id: zone_1774556492729
     type: bidirectional
@@ -95,8 +95,8 @@ store:
   promo_zone_ids: []
 event_hub:
   enabled: true
-  connection_string: ''
-  event_hub_name: ''
+  connection_string: ''  # Set via EVENTHUB_CONNECTION_STRING env var in .env
+  event_hub_name: 'es_a9ee9937-04bc-4c97-896d-227e60eb7695'
   batch_size: 10
   send_interval_seconds: 5
 overlay:

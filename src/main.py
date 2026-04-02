@@ -12,6 +12,9 @@ import sys
 import threading
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import uvicorn
 
 from src.api.app import create_app

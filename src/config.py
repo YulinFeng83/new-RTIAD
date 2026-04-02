@@ -100,6 +100,11 @@ class EventHubConfig(BaseModel):
     batch_size: int = 10
     send_interval_seconds: int = 5
 
+    def resolve_connection_string(self) -> str:
+        """Return env-var override if set, otherwise fall back to YAML value."""
+        import os
+        return os.getenv("EVENTHUB_CONNECTION_STRING", self.connection_string)
+
 
 class OverlayColors(BaseModel):
     employee: list[int] = Field(default_factory=lambda: [0, 200, 0])
