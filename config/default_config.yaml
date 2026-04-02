@@ -95,7 +95,7 @@ store:
   promo_zone_ids: []
 event_hub:
   enabled: true
-  connection_string: ''  # Set via EVENTHUB_CONNECTION_STRING env var in .env
+  connection_string: 'sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695'  # Set via EVENTHUB_CONNECTION_STRING env var in .env
   event_hub_name: 'es_a9ee9937-04bc-4c97-896d-227e60eb7695'
   batch_size: 10
   send_interval_seconds: 5
