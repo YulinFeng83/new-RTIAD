@@ -30,6 +30,7 @@ class SystemConfig(BaseModel):
     device: str = "cpu"
     model_precision: str = "fp32"
     log_level: str = "INFO"
+    max_duration_seconds: int = 0  # 0 = unlimited
 
 
 class ZoneConfig(BaseModel):

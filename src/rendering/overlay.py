@@ -93,6 +93,13 @@ class OverlayRenderer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 255), 2)
 
     def _draw_tracks(self, frame: np.ndarray, tracks: list[Track]) -> None:
+        group_colors: dict[str, tuple[int, ...]] = {}
+        palette = [
+            (255, 128, 0), (0, 255, 128), (255, 0, 255),
+            (0, 200, 255), (128, 0, 255), (255, 255, 0),
+            (0, 128, 255), (200, 0, 128), (128, 255, 0),
+        ]
+
         for track in tracks:
             bbox = track.current_bbox
             if bbox is None:
@@ -106,7 +113,46 @@ class OverlayRenderer:
                 label_text = f"#{track.track_id} {track.label.value}"
                 if track.label != PersonLabel.UNKNOWN:
                     label_text += f" {track.label_confidence:.0%}"
+                if track.group_id:
+                    label_text += f" G:{track.group_probability:.0%}"
                 self._draw_label_bg(frame, label_text, (x1, y1 - 5), color)
+
+        self._draw_group_links(frame, tracks, group_colors, palette)
+
+    def _draw_group_links(
+        self,
+        frame: np.ndarray,
+        tracks: list[Track],
+        group_colors: dict[str, tuple[int, ...]],
+        palette: list[tuple[int, ...]],
+    ) -> None:
+        groups: dict[str, list[Track]] = {}
+        for t in tracks:
+            if t.group_id and t.current_bbox is not None:
+                groups.setdefault(t.group_id, []).append(t)
+
+        for gid, members in groups.items():
+            if len(members) < 2:
+                continue
+            if gid not in group_colors:
+                group_colors[gid] = palette[len(group_colors) % len(palette)]
+            gc = group_colors[gid]
+
+            centroids = []
+            for m in members:
+                x1, y1, x2, y2 = m.current_bbox
+                centroids.append(((x1 + x2) // 2, (y1 + y2) // 2))
+
+            for i in range(len(centroids)):
+                for j in range(i + 1, len(centroids)):
+                    cv2.line(frame, centroids[i], centroids[j], gc, 2, cv2.LINE_AA)
+
+            cx = sum(p[0] for p in centroids) // len(centroids)
+            cy = min(p[1] for p in centroids) - 15
+            cv2.putText(
+                frame, f"Group {members[0].group_probability:.0%}",
+                (cx - 30, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, gc, 2, cv2.LINE_AA,
+            )
 
     def _draw_label_bg(
         self,

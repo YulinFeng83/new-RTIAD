@@ -10,6 +10,7 @@ Supports three source types (auto-detected from the URL string):
 from __future__ import annotations
 
 import logging
+import queue as _queue_mod
 import threading
 import time
 from pathlib import Path
@@ -37,7 +38,7 @@ class VideoStream:
         camera_id: str = "cam",
         target_fps: int = 15,
         loop: bool = True,
-        max_queue_size: int = 2,
+        max_queue_size: int = 1500,
         reconnect_delay: float = 5.0,
     ):
         self.camera_id = camera_id
@@ -53,6 +54,7 @@ class VideoStream:
         self._lock = threading.Lock()
         self._running = False
         self._thread: Optional[threading.Thread] = None
+        self._frame_queue: _queue_mod.Queue = _queue_mod.Queue(maxsize=max_queue_size)
 
         self._native_fps: float = 0.0
         self._frame_width: int = 0
@@ -89,6 +91,16 @@ class VideoStream:
             if self._frame is None:
                 return False, None, self._frame_id
             return True, self._frame.copy(), self._frame_id
+
+    def read_queued(self) -> tuple[bool, Optional[np.ndarray], int]:
+        """Return the next buffered frame (blocking). No frames are dropped."""
+        try:
+            item = self._frame_queue.get(timeout=2.0)
+        except _queue_mod.Empty:
+            return False, None, -1
+        if item is None:
+            return False, None, -1
+        return True, item[0], item[1]
 
     @property
     def is_running(self) -> bool:
@@ -169,6 +181,10 @@ class VideoStream:
                         continue
                     else:
                         logger.info("[%s] Video ended (single pass)", self.camera_id)
+                        try:
+                            self._frame_queue.put(None, timeout=5.0)
+                        except _queue_mod.Full:
+                            pass
                         self._running = False
                         return
                 else:
@@ -180,6 +196,12 @@ class VideoStream:
             with self._lock:
                 self._frame = frame
                 self._frame_id += 1
+                fid = self._frame_id
+
+            try:
+                self._frame_queue.put((frame, fid), timeout=2.0)
+            except _queue_mod.Full:
+                pass
 
             if self._source_type == "file":
                 time.sleep(frame_interval)
