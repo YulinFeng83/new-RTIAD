@@ -1,0 +1,385 @@
+{
+    "RealTimeDashboard":  {
+                              "schema_version":  69,
+                              "autoRefresh":  {
+                                                  "enabled":  true,
+                                                  "defaultInterval":  "1s"
+                                              },
+                              "tiles":  [
+                                            {
+                                                "id":  "f67b35fc-033f-4787-9dab-2040fe861beb",
+                                                "title":  "Today\u0027s Total Occupancy",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  0,
+                                                               "width":  4,
+                                                               "height":  5
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "9921e7ce-7287-4afe-ba65-6626298a3568"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  "CurrentOccupancy",
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "0056426b-599a-4610-9d7e-470d84514e0d",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "fa6515ed-43a4-4cf7-8a0c-0bc88b5363a1",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "==",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "blue",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "d6628cbd-d3d8-43e3-95ee-71637d271005",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "ca314e8e-cef1-47d2-b4c5-0b2f35e34bfe",
+                                                "title":  "Occupancy Trend",
+                                                "visualType":  "area",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  5,
+                                                               "width":  18,
+                                                               "height":  7
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "ed8f5b20-49bc-450a-a90d-f93a24390197"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multipleYAxes":  {
+                                                                                            "base":  {
+                                                                                                         "id":  "-1",
+                                                                                                         "label":  "Net Occupancy",
+                                                                                                         "columns":  [
+
+                                                                                                                     ],
+                                                                                                         "yAxisMaximumValue":  null,
+                                                                                                         "yAxisMinimumValue":  null,
+                                                                                                         "yAxisScale":  "linear",
+                                                                                                         "horizontalLines":  [
+
+                                                                                                                             ]
+                                                                                                     },
+                                                                                            "additional":  [
+
+                                                                                                           ],
+                                                                                            "showMultiplePanels":  false
+                                                                                        },
+                                                                      "seriesColors":  {
+                                                                                           "RunningOccupancy":  "color--(22)"
+                                                                                       },
+                                                                      "hideLegend":  false,
+                                                                      "legendLocation":  "bottom",
+                                                                      "xColumnTitle":  "Time",
+                                                                      "xColumn":  null,
+                                                                      "yColumns":  [
+                                                                                       "NetOccupancy",
+                                                                                       "RunningOccupancy"
+                                                                                   ],
+                                                                      "seriesColumns":  null,
+                                                                      "xAxisScale":  "linear",
+                                                                      "verticalLine":  "",
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "forceAxisTicks":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "22de768b-c7df-4511-a7e3-c2fbf7375eeb",
+                                                "title":  "Today\u0027s Occupancy Events",
+                                                "visualType":  "table",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  8,
+                                                               "y":  0,
+                                                               "width":  10,
+                                                               "height":  5
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "6d6164ac-5e8b-4528-a8e0-59fcdb71fd08"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "table__enableRenderLinks":  true,
+                                                                      "colorRulesDisabled":  true,
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ],
+                                                                      "table__renderLinks":  [
+
+                                                                                             ],
+                                                                      "colorRules":  [
+
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "2539e8bb-ad83-433d-bf96-c5600d5819da",
+                                                "title":  "Today\u0027s Average Occupancy",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  4,
+                                                               "y":  0,
+                                                               "width":  4,
+                                                               "height":  5
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "951418f9-0145-4ee9-9a88-5c3bc610d6a3"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  null,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "c16e5d52-d6ff-4fd9-ba99-f95ebbcd4cd8",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "AvgOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "95152d4a-56b4-48ca-87a8-9377de3aab77",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "==",
+                                                                                                                    "column":  "AvgOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "blue",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "278c76c8-1669-4a3e-bd88-6250946b8789",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "AvgOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            }
+                                        ],
+                              "baseQueries":  [
+
+                                              ],
+                              "parameters":  [
+                                                 {
+                                                     "kind":  "duration",
+                                                     "id":  "a6a7c118-7e4f-40bc-a0b0-b531b92e4aef",
+                                                     "displayName":  "Time range",
+                                                     "description":  "",
+                                                     "beginVariableName":  "_startTime",
+                                                     "endVariableName":  "_endTime",
+                                                     "defaultValue":  {
+                                                                          "kind":  "dynamic",
+                                                                          "count":  1,
+                                                                          "unit":  "hours"
+                                                                      },
+                                                     "showOnPages":  {
+                                                                         "kind":  "all"
+                                                                     }
+                                                 }
+                                             ],
+                              "dataSources":  [
+                                                  {
+                                                      "kind":  "kusto-trident",
+                                                      "id":  "51d68274-ce54-497c-8968-69446f31e13a",
+                                                      "name":  "officecam-eventhouse",
+                                                      "clusterUri":  "{{dashboard_primary_kusto_uri}}",
+                                                      "database":  "{{dashboard_primary_database_id}}",
+                                                      "workspace":  "00000000-0000-0000-0000-000000000000",
+                                                      "scopeId":  "kusto-trident"
+                                                  }
+                                              ],
+                              "pages":  [
+                                            {
+                                                "name":  "Page 1",
+                                                "id":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d"
+                                            }
+                                        ],
+                              "queries":  [
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "51d68274-ce54-497c-8968-69446f31e13a"
+                                                                 },
+                                                  "text":  "[\u0027officecam-event\u0027]\n| where todatetime(ts) - 6h \u003e= startofday(now() - 6h)\n| summarize \n    Entered = countif(event_type == \"PERSON_ENTERED\"),\n    Exited = countif(event_type == \"PERSON_EXITED\")\n| extend CurrentOccupancy = max_of(Entered - Exited, 0)",
+                                                  "id":  "9921e7ce-7287-4afe-ba65-6626298a3568",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "51d68274-ce54-497c-8968-69446f31e13a"
+                                                                 },
+                                                  "text":  "[\u0027officecam-event\u0027]\n| where todatetime(ts) - 6h \u003e= startofday(now() - 6h)\n| summarize \n    Entered = countif(event_type == \"PERSON_ENTERED\"),\n    Exited = countif(event_type == \"PERSON_EXITED\")\n    by bin(todatetime(ts), 1m)\n| extend NetOccupancy = Entered - Exited\n| order by ts asc\n| extend RunningOccupancy = max_of(row_cumsum(NetOccupancy), 0)\n| project Time=todatetime(ts), RunningOccupancy\n| render areachart with (ycolumns=RunningOccupancy)",
+                                                  "id":  "ed8f5b20-49bc-450a-a90d-f93a24390197",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "51d68274-ce54-497c-8968-69446f31e13a"
+                                                                 },
+                                                  "text":  "[\u0027officecam-event\u0027]\n| where todatetime(ts) - 6h \u003e= startofday(now() - 6h)\n// | project ts, event_type, camera_id, zone_id, track_id, cx, cy\n| project ts, event_type, camera_id, zone_id\n| order by todatetime(ts) desc\n| take 100",
+                                                  "id":  "6d6164ac-5e8b-4528-a8e0-59fcdb71fd08",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "51d68274-ce54-497c-8968-69446f31e13a"
+                                                                 },
+                                                  "text":  "[\u0027officecam-event\u0027]\n| where todatetime(ts) - 6h \u003e= startofday(now() - 6h)\n| summarize \n    Entered = countif(event_type == \"PERSON_ENTERED\"),\n    Exited = countif(event_type == \"PERSON_EXITED\")\n    by bin(todatetime(ts), 5m)\n| extend NetOccupancy = Entered - Exited\n| order by ts asc\n| extend RunningOccupancy = max_of(row_cumsum(NetOccupancy), 0)\n| summarize AvgOccupancy = round(avg(RunningOccupancy), 1)\n",
+                                                  "id":  "951418f9-0145-4ee9-9a88-5c3bc610d6a3",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              }
+                                          ]
+                          },
+    "platform":  {
+                     "$schema":  "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+                     "metadata":  {
+                                      "type":  "KQLDashboard",
+                                      "displayName":  "{{item_display_name}}",
+                                      "description":  "Office-Cam"
+                                  },
+                     "config":  {
+                                    "version":  "2.0",
+                                    "logicalId":  "00000000-0000-0000-0000-000000000000"
+                                }
+                 }
+}

@@ -1,0 +1,76 @@
+{
+  "platform": {
+    "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+    "metadata": {
+      "type": "Eventstream",
+      "displayName": "{{item_display_name}}"
+    },
+    "config": {
+      "version": "2.0",
+      "logicalId": "00000000-0000-0000-0000-000000000000"
+    }
+  },
+  "eventstreamProperties": {
+    "retentionTimeInDays": 1,
+    "eventThroughputLevel": "Low",
+    "schemaMode": "None"
+  },
+  "eventstream": {
+    "sources": [
+      {
+        "id": "cd63018b-9b01-4294-9f83-28d43a218827",
+        "name": "CustomEndpoint-Source",
+        "type": "CustomEndpoint",
+        "properties": {}
+      }
+    ],
+    "destinations": [
+      {
+        "id": "90b80903-5d3c-4ba2-ae42-3917061932e7",
+        "name": "eventmodel-eventhouse",
+        "type": "Eventhouse",
+        "properties": {
+          "dataIngestionMode": "ProcessedIngestion",
+          "workspaceId": "{{workspace_id}}",
+          "itemId": "{{kql_database_id}}",
+          "databaseName": "{{kql_database_name}}",
+          "tableName": "store_events_raw",
+          "inputSerialization": {
+            "type": "Json",
+            "properties": {
+              "encoding": "UTF8"
+            }
+          }
+        },
+        "inputNodes": [
+          {
+            "name": "{{item_stream_name}}"
+          }
+        ],
+        "inputSchemas": [
+          {
+            "name": "{{item_stream_name}}",
+            "schema": {
+              "columns": []
+            }
+          }
+        ]
+      }
+    ],
+    "streams": [
+      {
+        "id": "325dd8cb-0790-443b-9eac-1cbd51209cc9",
+        "name": "{{item_stream_name}}",
+        "type": "DefaultStream",
+        "properties": {},
+        "inputNodes": [
+          {
+            "name": "CustomEndpoint-Source"
+          }
+        ]
+      }
+    ],
+    "operators": [],
+    "compatibilityLevel": "1.1"
+  }
+}

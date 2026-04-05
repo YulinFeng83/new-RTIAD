@@ -1,0 +1,42 @@
+{
+    "RealTimeQueryset":  {
+                             "queryset":  {
+                                              "version":  "1.0.0",
+                                              "dataSources":  [
+                                                                  {
+                                                                      "id":  "d0d3bfca-2d53-4f69-902e-b026335780b0",
+                                                                      "clusterUri":  "{{event_model_kusto_uri}}",
+                                                                      "type":  "Fabric",
+                                                                      "databaseItemId":  "{{event_model_kql_database_id}}",
+                                                                      "databaseItemName":  "{{event_model_database_name}}"
+                                                                  }
+                                                              ],
+                                              "tabs":  [
+                                                           {
+                                                               "id":  "92c0a3ff-0acf-4034-b253-ee72975e157e",
+                                                               "content":  "// .create table store_events_raw (\n//     event_type: string,\n//     tenant_id: string,\n//     store_id: string,\n//     camera_id: string,\n//     timestamp: datetime,\n//     track_id: long,\n//     group_id: string,\n//     zone_id: string,\n//     direction: string,\n//     classification_label: string,\n//     employee_probability: real,\n//     customer_probability: real,\n//     unknown_probability: real,\n//     group_probability: real,\n//     dwell_seconds: real,\n//     zone_session_id: string,\n//     has_dwell_flag: bool,\n//     window_start: datetime,\n//     window_end: datetime,\n//     group_visitor_count: int,\n//     zone_visitors: int,\n//     max_dwell_bucket: string,\n//     promo_zone_flag: bool\n// )\n\n// .create table traffic_session_enriched_rt (\n//     tenant_id: string,\n//     store_id: string,\n//     window_start: datetime,\n//     window_end: datetime,\n//     group_visitor_count: int,\n//     zone_id: string,\n//     zone_visitors: int,\n//     dwell_seconds: real,\n//     has_dwell_flag: bool,\n//     zone_session_id: string,\n//     has_transaction_flag: bool,\n//     max_dwell_bucket: string,\n//     promo_zone_flag: bool\n// )\n\n.show tables ",
+                                                               "title":  "Tab",
+                                                               "dataSourceId":  "d0d3bfca-2d53-4f69-902e-b026335780b0"
+                                                           },
+                                                           {
+                                                               "id":  "afc2807e-14fb-437a-87b7-e9152e23b81e",
+                                                               "content":  ".create-or-alter function traffic_session_enriched_rt() {\n    store_events_raw\n    | where isnotempty(tenant_id) and isnotempty(store_id)\n    | project\n        tenant_id,\n        store_id,\n        window_start = iff(isnull(window_start), bin(timestamp, 5m), window_start),\n        window_end = iff(isnull(window_end), bin(timestamp, 5m) + 5m, window_end),\n        group_visitor_count = toint(coalesce(group_visitor_count, 0)),\n        zone_id,\n        zone_visitors = toint(coalesce(zone_visitors, 0)),\n        dwell_seconds = todouble(coalesce(dwell_seconds, 0.0)),\n        has_dwell_flag = iff(isnull(has_dwell_flag), todouble(coalesce(dwell_seconds, 0.0)) \u003e 0.0, has_dwell_flag),\n        zone_session_id,\n        has_transaction_flag = false,\n        max_dwell_bucket = iff(\n            isnotempty(max_dwell_bucket),\n            max_dwell_bucket,\n            case(\n                todouble(coalesce(dwell_seconds, 0.0)) \u003c 30.0, \"\u003c30s\",\n                todouble(coalesce(dwell_seconds, 0.0)) \u003c 60.0, \"30–60s\",\n                todouble(coalesce(dwell_seconds, 0.0)) \u003c 120.0, \"60–120s\",\n                \"\u003e120s\"\n            )\n        ),\n        promo_zone_flag = tobool(coalesce(promo_zone_flag, false))\n}\n\n// traffic_session_enriched_rt()\n// | getschema",
+                                                               "title":  "",
+                                                               "dataSourceId":  "d0d3bfca-2d53-4f69-902e-b026335780b0"
+                                                           }
+                                                       ]
+                                          }
+                         },
+    "platform":  {
+                     "$schema":  "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+                     "metadata":  {
+                                      "type":  "KQLQueryset",
+                                      "displayName":  "{{item_display_name}}",
+                                      "description":  "{{item_display_name}}"
+                                  },
+                     "config":  {
+                                    "version":  "2.0",
+                                    "logicalId":  "00000000-0000-0000-0000-000000000000"
+                                }
+                 }
+}

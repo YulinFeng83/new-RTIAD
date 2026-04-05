@@ -1,0 +1,4 @@
+client_name         = "acme"
+client_display_name = "Acme Corp"
+environment         = "prod"
+capacity_id         = "<your-fabric-capacity-id>"

@@ -35,3 +35,18 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Environment variables
+.env
+.env.*
+
+# Terraform local state and plans
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

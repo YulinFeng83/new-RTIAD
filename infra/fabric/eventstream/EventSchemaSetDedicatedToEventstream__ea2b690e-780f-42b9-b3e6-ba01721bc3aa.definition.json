@@ -1,0 +1,58 @@
+{
+    "EventSchemaSetDefinition":  {
+                                     "eventTypes":  [
+                                                        {
+                                                            "id":  "pos_schema_Trans1",
+                                                            "description":  "",
+                                                            "format":  "CloudEvents/1.0",
+                                                            "envelopeMetadata":  {
+                                                                                     "id":  {
+                                                                                                "type":  "string",
+                                                                                                "required":  true
+                                                                                            },
+                                                                                     "type":  {
+                                                                                                  "type":  "string",
+                                                                                                  "required":  true,
+                                                                                                  "value":  "pos_schema_Trans1"
+                                                                                              },
+                                                                                     "source":  {
+                                                                                                    "type":  "string",
+                                                                                                    "required":  true,
+                                                                                                    "value":  "/workspaces/846cf29f-843c-4f77-b85c-3e10b32d4b59/items/bb4865d2-ddf0-4174-ac1a-73e127937c55"
+                                                                                                },
+                                                                                     "specversion":  {
+                                                                                                         "type":  "string",
+                                                                                                         "required":  true
+                                                                                                     }
+                                                                                 },
+                                                            "schemaUrl":  "#/schemas/pos_schema_Trans1",
+                                                            "schemaFormat":  "Avro/1.12.0"
+                                                        }
+                                                    ],
+                                     "schemas":  [
+                                                     {
+                                                         "id":  "pos_schema_Trans1",
+                                                         "format":  "Avro/1.12.0",
+                                                         "versions":  [
+                                                                          {
+                                                                              "id":  "v1",
+                                                                              "format":  "Avro/1.12.0",
+                                                                              "schema":  "{\"type\":\"record\",\"name\":\"pos_schema_Trans1\",\"fields\":[{\"name\":\"tenant_id\",\"type\":\"string\"},{\"name\":\"store_id\",\"type\":\"string\"},{\"name\":\"transaction_id\",\"type\":\"string\"},{\"name\":\"transaction_timestamp\",\"type\":\"string\"},{\"name\":\"total_amount\",\"type\":\"double\"},{\"name\":\"item_count\",\"type\":\"long\"},{\"name\":\"payment_method\",\"type\":\"string\"},{\"name\":\"zone_id\",\"type\":\"string\"},{\"name\":\"currency\",\"type\":\"string\"}]}",
+                                                                              "ancestor":  "v1"
+                                                                          }
+                                                                      ]
+                                                     }
+                                                 ]
+                                 },
+    "platform":  {
+                     "$schema":  "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+                     "metadata":  {
+                                      "type":  "EventSchemaSet",
+                                      "displayName":  "EventSchemaSetDedicatedToEventstream__ea2b690e-780f-42b9-b3e6-ba01721bc3aa"
+                                  },
+                     "config":  {
+                                    "version":  "2.0",
+                                    "logicalId":  "00000000-0000-0000-0000-000000000000"
+                                }
+                 }
+}

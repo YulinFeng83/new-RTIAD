@@ -1,0 +1,1102 @@
+{
+    "RealTimeDashboard":  {
+                              "schema_version":  68,
+                              "autoRefresh":  {
+                                                  "enabled":  true,
+                                                  "defaultInterval":  "10s",
+                                                  "minInterval":  "10s"
+                                              },
+                              "tiles":  [
+                                            {
+                                                "id":  "db2d4a37-bdf2-4719-a112-c8e824ad7bf3",
+                                                "title":  "Current Occupancy",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  0,
+                                                               "width":  4,
+                                                               "height":  3
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "54ed3e88-25e8-467e-85b1-b34f246e7c98"
+                                                             },
+                                                "description":  "people in store",
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  null,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "98d89943-d85e-4356-9691-b4286c39b239",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ]
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "values":  [
+                                                                                                                                   "80"
+                                                                                                                               ],
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "CurrentOccupancy"
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "df01afea-9965-4417-9f66-f6ba8673d79f",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "100"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "555bd728-ef47-49e4-af30-fc4893e39188",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "column":  null,
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "values":  [
+                                                                                                                                   ""
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  null,
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "c28f9765-d41b-4f93-a7db-d5f0ddb1f888",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "CurrentOccupancy",
+                                                                                                                    "values":  [
+                                                                                                                                   "80"
+                                                                                                                               ]
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "values":  [
+                                                                                                                                   "100"
+                                                                                                                               ],
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "CurrentOccupancy"
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "3adbe05b-6d71-403f-9506-179aa3a14c5d",
+                                                "title":  "Today\u0027s Total Footfall",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  4,
+                                                               "y":  0,
+                                                               "width":  5,
+                                                               "height":  3
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "86a80f5b-a8c3-4735-9fa2-a6f5bf8e98d8"
+                                                             },
+                                                "description":  "entries since open",
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  null,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "417a97e1-58de-4e50-8f81-1371f1fdb407",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "values":  [
+                                                                                                                                   "0"
+                                                                                                                               ],
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "TotalFootfall"
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "blue",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "dc0b97f6-29d4-4fcb-9316-d95fcd993cc3",
+                                                "title":  "Today\u0027s Revenue",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  9,
+                                                               "y":  0,
+                                                               "width":  5,
+                                                               "height":  3
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "d7d5a6ea-c25f-4e7c-8296-606c173d43c5"
+                                                             },
+                                                "description":  "simulated",
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  "TodaysRevenueDisplay",
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "a5aff34f-74ca-4da5-aaee-46c69bab6c75",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "TodaysRevenue",
+                                                                                                                    "values":  [
+                                                                                                                                   "3000"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "f705da72-fee2-473c-b646-70ec942fdb8b",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "values":  [
+                                                                                                                                   "1500"
+                                                                                                                               ],
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "TodaysRevenue"
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "TodaysRevenue",
+                                                                                                                    "values":  [
+                                                                                                                                   "3000"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "f0561346-8cf6-4b6d-a21b-ba88b38c0ca8",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "TodaysRevenue",
+                                                                                                                    "values":  [
+                                                                                                                                   "1500"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "80dad322-cbfa-47a8-b1b1-ef86e163da7f",
+                                                "title":  "Conversion rate",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  14,
+                                                               "y":  0,
+                                                               "width":  4,
+                                                               "height":  3
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "f93336ce-75f4-4d96-ba79-62b4a22eb0a7"
+                                                             },
+                                                "description":  "transactions ÷ entries",
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  null,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "85dad53a-9da7-4049-b6fe-7a0d14dbcaae",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "ConversionRate",
+                                                                                                                    "values":  [
+                                                                                                                                   "20"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "641e200f-e9cd-4514-8a90-26b743218263",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "ConversionRate",
+                                                                                                                    "values":  [
+                                                                                                                                   "10"
+                                                                                                                               ]
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "ConversionRate",
+                                                                                                                    "values":  [
+                                                                                                                                   "20"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "b164f37e-0e6c-46a5-a852-ce95b28b4632",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "ConversionRate",
+                                                                                                                    "values":  [
+                                                                                                                                   "10"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "5f7bc4a1-6881-41cb-8ad2-56ae2fc0abd2",
+                                                "title":  "Entries vs Exits — Last 24 Hours",
+                                                "visualType":  "line",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  3,
+                                                               "width":  11,
+                                                               "height":  4
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "c7e15627-dfb6-4e33-b7e0-15b5073b0287"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multipleYAxes":  {
+                                                                                            "base":  {
+                                                                                                         "id":  "-1",
+                                                                                                         "label":  "People",
+                                                                                                         "columns":  [
+
+                                                                                                                     ],
+                                                                                                         "yAxisMaximumValue":  null,
+                                                                                                         "yAxisMinimumValue":  null,
+                                                                                                         "yAxisScale":  "linear",
+                                                                                                         "horizontalLines":  [
+
+                                                                                                                             ]
+                                                                                                     },
+                                                                                            "additional":  [
+
+                                                                                                           ],
+                                                                                            "showMultiplePanels":  false
+                                                                                        },
+                                                                      "seriesColors":  {
+
+                                                                                       },
+                                                                      "hideLegend":  false,
+                                                                      "legendLocation":  "right",
+                                                                      "xColumnTitle":  "",
+                                                                      "xColumn":  "ts",
+                                                                      "yColumns":  [
+                                                                                       "Entries",
+                                                                                       "Exits"
+                                                                                   ],
+                                                                      "seriesColumns":  null,
+                                                                      "xAxisScale":  "linear",
+                                                                      "verticalLine":  "",
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "forceAxisTicks":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "ad8634fd-37c7-4ca8-a0a0-c3ee641ea12d",
+                                                "title":  "Revenue Vs Footfall",
+                                                "visualType":  "column",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  11,
+                                                               "y":  3,
+                                                               "width":  7,
+                                                               "height":  4
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "480771f7-f7df-48d5-8c5d-413514552dbf"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multipleYAxes":  {
+                                                                                            "base":  {
+                                                                                                         "id":  "-1",
+                                                                                                         "label":  "$ / Count",
+                                                                                                         "columns":  [
+
+                                                                                                                     ],
+                                                                                                         "yAxisMaximumValue":  null,
+                                                                                                         "yAxisMinimumValue":  null,
+                                                                                                         "yAxisScale":  "linear",
+                                                                                                         "horizontalLines":  [
+
+                                                                                                                             ]
+                                                                                                     },
+                                                                                            "additional":  [
+
+                                                                                                           ],
+                                                                                            "showMultiplePanels":  false
+                                                                                        },
+                                                                      "seriesColors":  {
+
+                                                                                       },
+                                                                      "hideLegend":  false,
+                                                                      "legendLocation":  "bottom",
+                                                                      "xColumnTitle":  "",
+                                                                      "xColumn":  "Hour",
+                                                                      "yColumns":  [
+                                                                                       "Revenue",
+                                                                                       "Footfall"
+                                                                                   ],
+                                                                      "seriesColumns":  null,
+                                                                      "xAxisScale":  "linear",
+                                                                      "verticalLine":  "",
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "forceAxisTicks":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "945e1daf-7198-4bc1-973d-19e8e4937fb4",
+                                                "title":  "Weekly Traffic Heatmap",
+                                                "visualType":  "heatmap",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  12,
+                                                               "width":  8,
+                                                               "height":  8
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "8bb0581d-dd16-445e-9310-7523fdbd821a"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "xColumn":  "Hour",
+                                                                      "yColumn":  "DayOfWeek",
+                                                                      "xColumnTitle":  "",
+                                                                      "yColumnTitle":  "",
+                                                                      "heatMap__dataColumn":  "Visitors",
+                                                                      "heatMap__colorPaletteKey":  "blue"
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "4ff35074-4d4e-41ae-9636-da4423f7f611",
+                                                "title":  "Avg Dwell Time by Hour",
+                                                "visualType":  "column",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  14,
+                                                               "y":  11,
+                                                               "width":  4,
+                                                               "height":  4
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "09e895a6-b3a7-4723-88a8-2f159dd0a746"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multipleYAxes":  {
+                                                                                            "base":  {
+                                                                                                         "id":  "-1",
+                                                                                                         "label":  "Minutes",
+                                                                                                         "columns":  [
+
+                                                                                                                     ],
+                                                                                                         "yAxisMaximumValue":  null,
+                                                                                                         "yAxisMinimumValue":  null,
+                                                                                                         "yAxisScale":  "linear",
+                                                                                                         "horizontalLines":  [
+
+                                                                                                                             ]
+                                                                                                     },
+                                                                                            "additional":  [
+
+                                                                                                           ],
+                                                                                            "showMultiplePanels":  false
+                                                                                        },
+                                                                      "seriesColors":  {
+
+                                                                                       },
+                                                                      "hideLegend":  false,
+                                                                      "legendLocation":  "bottom",
+                                                                      "xColumnTitle":  "",
+                                                                      "xColumn":  null,
+                                                                      "yColumns":  null,
+                                                                      "seriesColumns":  null,
+                                                                      "xAxisScale":  "linear",
+                                                                      "verticalLine":  "",
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "forceAxisTicks":  true,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "dc058f2f-52fe-4f76-8b82-9bebfdc3466e",
+                                                "title":  "Occupancy vs Capacity",
+                                                "visualType":  "embeddedapp",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  8,
+                                                               "y":  7,
+                                                               "width":  10,
+                                                               "height":  4
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "51406237-407a-46a4-a888-51d140ed9fea"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "table__enableRenderLinks":  true,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ],
+                                                                      "table__renderLinks":  [
+
+                                                                                             ],
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "94358932-55a3-4fff-adc6-53e32a85e927",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "OccupancyPct",
+                                                                                                                    "values":  [
+                                                                                                                                   "60"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "embeddedapp"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "13cbb820-14b0-42eb-b1fb-689187520dd7",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "OccupancyPct",
+                                                                                                                    "values":  [
+                                                                                                                                   "60"
+                                                                                                                               ]
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "values":  [
+                                                                                                                                   "85"
+                                                                                                                               ],
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "OccupancyPct"
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "embeddedapp"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "68ecb4bd-4dd0-453a-8460-3fc2fe6beefe",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "OccupancyPct",
+                                                                                                                    "values":  [
+                                                                                                                                   "85"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "embeddedapp"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "9798da03-16c7-4325-b62a-0285a3fa7f19",
+                                                "title":  "Revenue Per visitor",
+                                                "visualType":  "card",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  8,
+                                                               "y":  11,
+                                                               "width":  6,
+                                                               "height":  4
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "60c01349-ae28-4745-a0ad-56bffd356b20"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "large",
+                                                                      "multiStat__valueColumn":  "RevenuePerVisitor",
+                                                                      "colorRulesDisabled":  false,
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "a6f05f22-0101-4e37-af5a-9d7f4a67ae72",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e",
+                                                                                                                    "column":  "RevenuePerVisitor",
+                                                                                                                    "values":  [
+                                                                                                                                   "15"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "green",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "8e4f5896-b142-4243-b148-b56c87822a18",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003e=",
+                                                                                                                    "column":  "RevenuePerVisitor",
+                                                                                                                    "values":  [
+                                                                                                                                   "8"
+                                                                                                                               ]
+                                                                                                                },
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c=",
+                                                                                                                    "column":  "RevenuePerVisitor",
+                                                                                                                    "values":  [
+                                                                                                                                   "15"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "yellow",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "434fbec9-be2b-4508-89cd-f677a50624fc",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "\u003c",
+                                                                                                                    "column":  "RevenuePerVisitor",
+                                                                                                                    "values":  [
+                                                                                                                                   "8"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "card"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "10fa732e-79d5-4009-8d63-e76c51e0cffb",
+                                                "title":  "Staff To Visitor Ratio",
+                                                "visualType":  "table",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  8,
+                                                               "y":  15,
+                                                               "width":  10,
+                                                               "height":  5
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "012e3724-0288-4a26-aaa2-fb2250857d1a"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "table__enableRenderLinks":  true,
+                                                                      "colorRulesDisabled":  false,
+                                                                      "crossFilterDisabled":  false,
+                                                                      "drillthroughDisabled":  false,
+                                                                      "crossFilter":  [
+
+                                                                                      ],
+                                                                      "drillthrough":  [
+
+                                                                                       ],
+                                                                      "table__renderLinks":  [
+
+                                                                                             ],
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "dd4f4434-0e1d-4551-8c06-0fa9c49b0f07",
+                                                                                             "ruleType":  "colorByValue",
+                                                                                             "ruleName":  "",
+                                                                                             "applyTo":  "cells",
+                                                                                             "column":  "VisitorsPerStaff",
+                                                                                             "themeName":  "traffic-lights",
+                                                                                             "maxValue":  null,
+                                                                                             "minValue":  null,
+                                                                                             "reverseTheme":  true,
+                                                                                             "visualType":  "table"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            },
+                                            {
+                                                "id":  "5839e043-8dbf-413e-88a9-0308e3e1fc5d",
+                                                "title":  "Peak Vs Quiet Hours",
+                                                "visualType":  "multistat",
+                                                "pageId":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d",
+                                                "layout":  {
+                                                               "x":  0,
+                                                               "y":  7,
+                                                               "width":  8,
+                                                               "height":  5
+                                                           },
+                                                "queryRef":  {
+                                                                 "kind":  "query",
+                                                                 "queryId":  "c9fafff9-e6e6-4bc9-be38-5ba8136f9c10"
+                                                             },
+                                                "visualOptions":  {
+                                                                      "multiStat__textSize":  "auto",
+                                                                      "multiStat__valueColumn":  "Visitors",
+                                                                      "colorRulesDisabled":  false,
+                                                                      "multiStat__displayOrientation":  "horizontal",
+                                                                      "multiStat__labelColumn":  null,
+                                                                      "multiStat__slot":  {
+                                                                                              "width":  2,
+                                                                                              "height":  1
+                                                                                          },
+                                                                      "colorRules":  [
+                                                                                         {
+                                                                                             "id":  "f1da408f-46e9-4930-b886-d1f977120d8e",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "==",
+                                                                                                                    "column":  "Label",
+                                                                                                                    "values":  [
+                                                                                                                                   "Busiest"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "red",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "multistat"
+                                                                                         },
+                                                                                         {
+                                                                                             "id":  "ce62dd01-d413-4bf2-8e5c-e3408132ed8d",
+                                                                                             "ruleType":  "colorByCondition",
+                                                                                             "applyToColumn":  null,
+                                                                                             "hideText":  false,
+                                                                                             "applyTo":  "cells",
+                                                                                             "conditions":  [
+                                                                                                                {
+                                                                                                                    "operator":  "==",
+                                                                                                                    "column":  "Label",
+                                                                                                                    "values":  [
+                                                                                                                                   "Quietest"
+                                                                                                                               ]
+                                                                                                                }
+                                                                                                            ],
+                                                                                             "chainingOperator":  "and",
+                                                                                             "colorStyle":  "bold",
+                                                                                             "color":  "blue",
+                                                                                             "tag":  "",
+                                                                                             "icon":  null,
+                                                                                             "ruleName":  "",
+                                                                                             "visualType":  "multistat"
+                                                                                         }
+                                                                                     ]
+                                                                  }
+                                            }
+                                        ],
+                              "baseQueries":  [
+
+                                              ],
+                              "parameters":  [
+                                                 {
+                                                     "kind":  "duration",
+                                                     "id":  "a6a7c118-7e4f-40bc-a0b0-b531b92e4aef",
+                                                     "displayName":  "Time range",
+                                                     "description":  "",
+                                                     "beginVariableName":  "_startTime",
+                                                     "endVariableName":  "_endTime",
+                                                     "defaultValue":  {
+                                                                          "kind":  "dynamic",
+                                                                          "count":  1,
+                                                                          "unit":  "hours"
+                                                                      },
+                                                     "showOnPages":  {
+                                                                         "kind":  "all"
+                                                                     }
+                                                 }
+                                             ],
+                              "dataSources":  [
+                                                  {
+                                                      "kind":  "kusto-trident",
+                                                      "id":  "cb946270-b111-49c0-bca6-176ca102acec",
+                                                      "name":  "{{dashboard_primary_database_name}}",
+                                                      "clusterUri":  "{{dashboard_primary_kusto_uri}}",
+                                                      "database":  "{{dashboard_primary_database_id}}",
+                                                      "workspace":  "00000000-0000-0000-0000-000000000000",
+                                                      "scopeId":  "kusto-trident"
+                                                  }
+                                              ],
+                              "pages":  [
+                                            {
+                                                "name":  "Page 1",
+                                                "id":  "0a4fc8ce-e52c-445a-bf41-2f8479c5017d"
+                                            }
+                                        ],
+                              "queries":  [
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nofficeCam\n| where ts \u003e= startofday(_now) and ts \u003c= _now\n| summarize arg_max(ts, event_type) by track_id\n| summarize CurrentOccupancy = countif(event_type == \"PERSON_ENTERED\")\n| project CurrentOccupancy\n// officeCam\n// | where ts \u003e= startofday(now())\n// | summarize\n//     entries = countif(event_type == \"PERSON_ENTERED\"),\n//     exits = countif(event_type == \"PERSON_EXITED\")\n// | extend CurrentOccupancy = entries - exits\n// | project CurrentOccupancy",
+                                                  "id":  "54ed3e88-25e8-467e-85b1-b34f246e7c98",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nofficeCam\n| where ts \u003e= startofday(_now) \n    and ts \u003c= _now\n    and event_type == \"PERSON_ENTERED\"\n| summarize TotalFootfall = count()",
+                                                  "id":  "86a80f5b-a8c3-4735-9fa2-a6f5bf8e98d8",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _today_str = format_datetime(startofday(_now), \u0027yyyy-MM-dd\u0027);\nStoreRevenue\n| where rev_date == _today_str\n    and rev_hour \u003c= datetime_part(\"hour\", _now)\n| summarize \n    TodaysRevenue = round(sum(revenue), 2),\n    TodaysRevenueDisplay = strcat(\"$\", tostring(round(sum(revenue), 2)))",
+                                                  "id":  "d7d5a6ea-c25f-4e7c-8296-606c173d43c5",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _today = startofday(_now);\nlet _today_str = format_datetime(_today, \u0027yyyy-MM-dd\u0027);\nlet _visitors = toscalar(\n    officeCam\n    | where ts \u003e= _today and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | count);\nlet _txns = toscalar(\n    StoreRevenue\n    | where rev_date == _today_str and rev_hour \u003c= datetime_part(\"hour\", _now)\n    | summarize sum(num_transactions));\nlet _rate = iff(_visitors == 0, 0.0, round(todouble(_txns) / todouble(_visitors) * 100.0, 1));\nprint ConversionRate = strcat(tostring(_rate), \"%\")",
+                                                  "id":  "f93336ce-75f4-4d96-ba79-62b4a22eb0a7",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nofficeCam\n| where ts \u003e= _now - 24h and ts \u003c= _now\n| summarize\n    Entries = countif(event_type == \"PERSON_ENTERED\"),\n    Exits = countif(event_type == \"PERSON_EXITED\")\n    by bin(ts, 15m)\n| order by ts asc",
+                                                  "id":  "c7e15627-dfb6-4e33-b7e0-15b5073b0287",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _today = startofday(_now);\nlet _today_str = format_datetime(_today, \u0027yyyy-MM-dd\u0027);\nlet _footfall =\n    officeCam\n    | where ts \u003e= _today and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | extend h = datetime_part(\"hour\", ts)\n    | summarize Footfall = count() by h;\nStoreRevenue\n| where rev_date == _today_str and rev_hour \u003c= datetime_part(\"hour\", _now)\n| join kind=leftouter _footfall on $left.rev_hour == $right.h\n| project Hour = rev_hour, Revenue = revenue, Footfall = coalesce(Footfall, 0)\n| order by Hour asc",
+                                                  "id":  "480771f7-f7df-48d5-8c5d-413514552dbf",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nofficeCam\n| where ts \u003e= _now - 7d and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n| extend DayOfWeek = case(\n    dayofweek(ts) == time(0:00:00), \"0-Sun\",\n    dayofweek(ts) == time(1.00:00:00), \"1-Mon\",\n    dayofweek(ts) == time(2.00:00:00), \"2-Tue\",\n    dayofweek(ts) == time(3.00:00:00), \"3-Wed\",\n    dayofweek(ts) == time(4.00:00:00), \"4-Thu\",\n    dayofweek(ts) == time(5.00:00:00), \"5-Fri\",\n    \"6-Sat\")\n| extend Hour = tostring(datetime_part(\"hour\", ts))\n| summarize Visitors = count() by DayOfWeek, Hour\n| order by DayOfWeek asc, Hour asc",
+                                                  "id":  "8bb0581d-dd16-445e-9310-7523fdbd821a",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _entries =\n    officeCam\n    | where ts \u003e= _now - 7d and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | summarize entry_ts = min(ts) by track_id, entry_day = startofday(ts);\nlet _exits =\n    officeCam\n    | where ts \u003e= _now - 7d and ts \u003c= _now and event_type == \"PERSON_EXITED\"\n    | summarize exit_ts = max(ts) by track_id, exit_day = startofday(ts);\n_entries\n| join kind=inner _exits on $left.track_id == $right.track_id, $left.entry_day == $right.exit_day\n| extend dwell_min = datetime_diff(\"minute\", exit_ts, entry_ts)\n| where dwell_min \u003e 0 and dwell_min \u003c 180\n| extend Hour = datetime_part(\"hour\", entry_ts)\n| summarize AvgDwellMinutes = round(avg(todouble(dwell_min)), 1) by Hour\n| order by Hour asc",
+                                                  "id":  "09e895a6-b3a7-4723-88a8-2f159dd0a746",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _capacity = toscalar(StoreConfig | take 1 | project max_capacity);\nlet _now = now() - 5h;\nlet _occupancy = toscalar(\n    officeCam\n    | where ts \u003e= startofday(_now) and ts \u003c= _now\n    | summarize arg_max(ts, event_type) by track_id\n    | summarize CurrentOccupancy = countif(event_type == \"PERSON_ENTERED\")\n);\nprint CurrentOccupancy = _occupancy,\n      MaxCapacity = _capacity,\n      OccupancyPct = round(todouble(_occupancy) / todouble(_capacity) * 100.0, 1)\n",
+                                                  "id":  "51406237-407a-46a4-a888-51d140ed9fea",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _today = startofday(_now);\nlet _today_str = format_datetime(_today, \u0027yyyy-MM-dd\u0027);\nlet _revenue = toscalar(\n    StoreRevenue\n    | where rev_date == _today_str and rev_hour \u003c= datetime_part(\"hour\", _now)\n    | summarize sum(revenue));\nlet _visitors = toscalar(\n    officeCam\n    | where ts \u003e= _today and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | count);\nprint RevenuePerVisitor = iff(_visitors == 0, 0.0, round(_revenue / todouble(_visitors), 2))",
+                                                  "id":  "60c01349-ae28-4745-a0ad-56bffd356b20",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _today = startofday(_now);\nlet _today_str = format_datetime(_today, \u0027yyyy-MM-dd\u0027);\nlet _traffic =\n    officeCam\n    | where ts \u003e= _today and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | extend h = datetime_part(\"hour\", ts)\n    | summarize Visitors = count() by h;\nStaffSchedule\n| where sched_date == _today_str and sched_hour \u003c= datetime_part(\"hour\", _now)\n| join kind=leftouter _traffic on $left.sched_hour == $right.h\n| extend Visitors = coalesce(Visitors, 0)\n| extend VisitorsPerStaff = round(todouble(Visitors) / todouble(staff_count), 1)\n| project Hour = sched_hour, StaffCount = staff_count, Visitors, VisitorsPerStaff, Shift = shift_label\n| order by Hour asc",
+                                                  "id":  "012e3724-0288-4a26-aaa2-fb2250857d1a",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              },
+                                              {
+                                                  "dataSource":  {
+                                                                     "kind":  "inline",
+                                                                     "dataSourceId":  "cb946270-b111-49c0-bca6-176ca102acec"
+                                                                 },
+                                                  "text":  "let _now = now() - 5h;\nlet _traffic =\n    officeCam\n    | where ts \u003e= startofday(_now) and ts \u003c= _now and event_type == \"PERSON_ENTERED\"\n    | extend Hour = datetime_part(\"hour\", ts)\n    | summarize Visitors = count() by Hour\n    | order by Visitors desc;\nlet _busiest = _traffic | take 1 | extend Label = \"Busiest\";\nlet _quietest = _traffic | order by Visitors asc | take 1 | extend Label = \"Quietest\";\nunion _busiest, _quietest\n| project Label, Hour, Visitors",
+                                                  "id":  "c9fafff9-e6e6-4bc9-be38-5ba8136f9c10",
+                                                  "usedVariables":  [
+
+                                                                    ]
+                                              }
+                                          ]
+                          },
+    "platform":  {
+                     "$schema":  "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+                     "metadata":  {
+                                      "type":  "KQLDashboard",
+                                      "displayName":  "{{item_display_name}}",
+                                      "description":  "StoreMonitor"
+                                  },
+                     "config":  {
+                                    "version":  "2.0",
+                                    "logicalId":  "00000000-0000-0000-0000-000000000000"
+                                }
+                 }
+}
