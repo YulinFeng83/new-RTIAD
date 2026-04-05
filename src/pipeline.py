@@ -7,6 +7,7 @@ Chains: frame skip → detect + track → classify → zone crossing → footfal
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import logging
 import threading
@@ -14,6 +15,7 @@ import time
 from typing import Any, Optional
 
 import numpy as np
+import cv2
 
 from src.camera.stream import VideoStream
 from src.analytics.group_likelihood import GroupLikelihoodEngine
@@ -60,13 +62,17 @@ class CameraPipeline:
         self._overlay = overlay_renderer
         self._event_hub = event_hub
         self._config = config
-        self._group_engine = GroupLikelihoodEngine()
+        self._group_engine = GroupLikelihoodEngine(threshold=0.5)
 
         self._annotated_frame: Optional[np.ndarray] = None
         self._frame_lock = threading.Lock()
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._processed_count = 0
+        self._video_writer: Optional[cv2.VideoWriter] = None
+        self._clip_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix=f"clip-{camera_id}",
+        )
 
     def start(self) -> None:
         if self._running:
@@ -79,8 +85,13 @@ class CameraPipeline:
     def stop(self) -> None:
         self._running = False
         if self._thread:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=10)
             self._thread = None
+        self._clip_executor.shutdown(wait=True, cancel_futures=True)
+        if self._video_writer is not None:
+            self._video_writer.release()
+            self._video_writer = None
+            logger.info("[%s] Video output saved", self.camera_id)
         logger.info("[%s] Pipeline stopped", self.camera_id)
 
     def get_annotated_frame(self) -> Optional[np.ndarray]:
@@ -90,33 +101,79 @@ class CameraPipeline:
     def _run_loop(self) -> None:
         frame_skip = self._config.system.frame_skip
         frame_counter = 0
+        write_counter = 0
+        fps = self._config.system.fps_target
+        max_seconds = self._config.system.max_duration_seconds
+        max_frames = max_seconds * fps if max_seconds > 0 else 0
+        last_tracks: list[Track] = []
+        last_zones: list = []
+        last_stats = self._footfall.stats
 
         while self._running:
-            ok, frame, frame_id = self._stream.read()
+            if max_frames > 0 and frame_counter >= max_frames:
+                logger.info(
+                    "[%s] Reached %ds limit (%d frames), finishing pipeline",
+                    self.camera_id, max_seconds, frame_counter,
+                )
+                break
+
+            ok, frame, frame_id = self._stream.read_queued()
             if not ok or frame is None:
-                time.sleep(0.01)
+                if not self._stream.is_running:
+                    logger.info("[%s] Stream ended, finishing pipeline", self.camera_id)
+                    break
                 continue
 
             frame_counter += 1
-            if frame_counter % frame_skip != 0:
-                continue
+            should_process = (frame_counter % frame_skip == 0)
 
-            self._processed_count += 1
+            if should_process:
+                self._processed_count += 1
+                try:
+                    annotated = self._process_frame(frame, frame_id)
+                    last_tracks = self._tracker.active_tracks()
+                    last_zones = self._zone_manager.get_zones_for_camera(self.camera_id)
+                    last_stats = self._footfall.stats
+                except Exception:
+                    logger.exception("[%s] Error processing frame %d", self.camera_id, frame_id)
+                    annotated = frame
+            else:
+                annotated = self._overlay.render(frame, last_tracks, last_zones, last_stats)
 
-            try:
-                annotated = self._process_frame(frame, frame_id)
-                with self._frame_lock:
-                    self._annotated_frame = annotated
-            except Exception:
-                logger.exception("[%s] Error processing frame %d", self.camera_id, frame_id)
+            with self._frame_lock:
+                self._annotated_frame = annotated
+            self._write_frame(annotated)
+            write_counter += 1
+
+        if self._video_writer is not None:
+            self._video_writer.release()
+            self._video_writer = None
+            logger.info("[%s] Video output saved (%d written, %d processed)", self.camera_id, write_counter, self._processed_count)
+
+    def _write_frame(self, frame: np.ndarray) -> None:
+        if self._video_writer is None:
+            from pathlib import Path
+            out_dir = Path("outputs")
+            out_dir.mkdir(exist_ok=True)
+            h, w = frame.shape[:2]
+            out_path = out_dir / f"{self.camera_id}_output.mp4"
+            fps = self._config.system.fps_target
+            self._video_writer = cv2.VideoWriter(
+                str(out_path),
+                cv2.VideoWriter_fourcc(*"mp4v"),
+                fps,
+                (w, h),
+            )
+            logger.info("[%s] Recording to %s (%dx%d @ %d fps)", self.camera_id, out_path, w, h, fps)
+        self._video_writer.write(frame)
 
     def _process_frame(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
         ts = time.time()
 
         active_tracks = self._tracker.update(frame, frame_id)
-
         self._update_track_behavior_context(active_tracks, ts, frame_id)
 
+        # Fire-and-forget CLIP classification in background thread
         context: dict[str, Any] = {
             "current_time": ts,
             "frame_id": frame_id,
@@ -124,30 +181,11 @@ class CameraPipeline:
             "first_n_entries_flag": 1.0 if frame_id < 300 else 0.0,
             "classification_events": [],
         }
-        self._classifier.classify_tracks(active_tracks, frame, frame_id, context)
+        self._clip_executor.submit(
+            self._classify_and_publish, list(active_tracks), frame.copy(), frame_id, context, ts,
+        )
 
         self._apply_group_assignments(active_tracks)
-
-        for payload in context["classification_events"]:
-            track = next((candidate for candidate in active_tracks if candidate.track_id == payload["track_id"]), None)
-            if track is None:
-                continue
-            self._event_hub.send(BaseEvent(
-                event_type="classification_updated",
-                tenant_id=self._config.store.tenant_id,
-                store_id=self._config.store.store_id,
-                camera_id=self.camera_id,
-                timestamp=ts,
-                track_id=track.track_id,
-                group_id=track.group_id,
-                classification_label=payload["classification_label"],
-                employee_probability=payload["employee_probability"],
-                customer_probability=payload["customer_probability"],
-                unknown_probability=payload["unknown_probability"],
-                group_probability=track.group_probability,
-                window_start=self._window_start(ts),
-                window_end=self._window_end(ts),
-            ))
 
         for track, event_data in self._zone_manager.check_crossings(active_tracks, self.camera_id):
             event_timestamp = float(event_data.get("timestamp", ts))
@@ -209,9 +247,41 @@ class CameraPipeline:
 
         zones = self._zone_manager.get_zones_for_camera(self.camera_id)
         stats = self._footfall.stats
-        annotated = self._overlay.render(frame, active_tracks, zones, stats)
+        return self._overlay.render(frame, active_tracks, zones, stats)
 
-        return annotated
+    def _classify_and_publish(
+        self,
+        tracks: list[Track],
+        frame: np.ndarray,
+        frame_id: int,
+        context: dict[str, Any],
+        ts: float,
+    ) -> None:
+        """Run CLIP classification in a background thread."""
+        try:
+            self._classifier.classify_tracks(tracks, frame, frame_id, context)
+            for payload in context["classification_events"]:
+                track = next((t for t in tracks if t.track_id == payload["track_id"]), None)
+                if track is None:
+                    continue
+                self._event_hub.send(BaseEvent(
+                    event_type="classification_updated",
+                    tenant_id=self._config.store.tenant_id,
+                    store_id=self._config.store.store_id,
+                    camera_id=self.camera_id,
+                    timestamp=ts,
+                    track_id=track.track_id,
+                    group_id=track.group_id,
+                    classification_label=payload["classification_label"],
+                    employee_probability=payload["employee_probability"],
+                    customer_probability=payload["customer_probability"],
+                    unknown_probability=payload["unknown_probability"],
+                    group_probability=track.group_probability,
+                    window_start=self._window_start(ts),
+                    window_end=self._window_end(ts),
+                ))
+        except Exception:
+            logger.exception("[%s] Background classification error", self.camera_id)
 
     def on_config_change(self, config: AppConfig) -> None:
         self._config = config
@@ -233,6 +303,7 @@ class CameraPipeline:
 
     def _apply_group_assignments(self, tracks: list[Track]) -> None:
         assignments = self._group_engine.assign_groups(tracks)
+        logged_groups: set[str] = set()
         for track in tracks:
             assignment = assignments.get(track.track_id)
             if assignment is None:
@@ -243,6 +314,12 @@ class CameraPipeline:
             track.group_probability = assignment["group_probability"]
             if assignment["signals"]:
                 track.derived_features["group_signals"] = assignment["signals"]
+            if track.group_id and track.group_id not in logged_groups:
+                logged_groups.add(track.group_id)
+                logger.info(
+                    "[%s] Group detected: %s  prob=%.3f",
+                    self.camera_id, track.group_id, track.group_probability,
+                )
 
     def _window_start(self, timestamp: float) -> float:
         return timestamp - (timestamp % 300)

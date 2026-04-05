@@ -4,55 +4,26 @@ system:
   device: cpu
   model_precision: fp32
   log_level: INFO
+  max_duration_seconds: 60
 cameras:
-- id: cam_indoor
-  url: ./data/videos/indoor.mp4
+- id: cam_indoor_G419
+  url: "./test data/2018-03-07.16-50-00.16-55-00.school.G419.mp4"
   scene_type: indoor
-  loop: true
-  zones:
-  - id: zone_1774556492729
-    type: bidirectional
-    polygon:
-    - - 1059
-      - 414
-    - - 821
-      - 704
-    - - 1255
-      - 707
-    - - 1258
-      - 474
-    - - 1059
-      - 417
-    - - 1059
-      - 417
-    direction:
-    - -0.9066816222348387
-    - -0.42181564207791183
-    name: zone_1774556492729
-    promo_zone_flag: false
-  - id: zone_1774647127885
-    type: staff_only
-    polygon:
-    - - 7
-      - 121
-    - - 167
-      - 115
-    - - 426
-      - 635
-    - - 6
-      - 699
-    - - 7
-      - 130
-    - - 7
-      - 130
-    direction:
-    - -0.9435804645659694
-    - 0.3311433328476799
-    name: poc counter
-    promo_zone_flag: false
+  loop: false
+  zones: []
+- id: cam_indoor_G420
+  url: "./test data/2018-03-07.16-50-01.16-55-01.school.G420.mp4"
+  scene_type: indoor
+  loop: false
+  zones: []
+- id: cam_outdoor_G300
+  url: "./test data/2018-03-07.16-50-06.16-55-06.school.G300.mp4"
+  scene_type: outdoor
+  loop: false
+  zones: []
 detection:
   model: yolov8s.pt
-  confidence: 0.5
+  confidence: 0.25
   iou_threshold: 0.45
 tracking:
   tracker: bytetrack
@@ -61,7 +32,7 @@ employee_detection:
   threshold: 0.65
   sticky_labels: true
   re_eval_threshold: 0.3
-  classify_every_n_frames: 15
+  classify_every_n_frames: 45
   max_employees: 2
   strategies:
   - name: dress_code
@@ -95,8 +66,8 @@ store:
   promo_zone_ids: []
 event_hub:
   enabled: true
-  connection_string: ''
-  event_hub_name: ''
+  connection_string: 'sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695'  # Set via EVENTHUB_CONNECTION_STRING env var in .env
+  event_hub_name: 'es_a9ee9937-04bc-4c97-896d-227e60eb7695'
   batch_size: 10
   send_interval_seconds: 5
 overlay:

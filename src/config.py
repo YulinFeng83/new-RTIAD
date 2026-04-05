@@ -30,6 +30,7 @@ class SystemConfig(BaseModel):
     device: str = "cpu"
     model_precision: str = "fp32"
     log_level: str = "INFO"
+    max_duration_seconds: int = 0  # 0 = unlimited
 
 
 class ZoneConfig(BaseModel):
@@ -99,6 +100,11 @@ class EventHubConfig(BaseModel):
     event_hub_name: str = ""
     batch_size: int = 10
     send_interval_seconds: int = 5
+
+    def resolve_connection_string(self) -> str:
+        """Return env-var override if set, otherwise fall back to YAML value."""
+        import os
+        return os.getenv("EVENTHUB_CONNECTION_STRING", self.connection_string)
 
 
 class OverlayColors(BaseModel):

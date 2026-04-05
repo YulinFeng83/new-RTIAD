@@ -3,11 +3,10 @@
 venv/
 env/
 
-# Model files
+# Model files (downloadable, no need to track)
 *.pt
 *.pth
 *.onnx
-*.bin
 *.safetensors
 
 # Python bytecode
@@ -20,9 +19,6 @@ build/
 
 # HuggingFace / transformers cache
 .cache/
-
-# Data / video files
-data/videos/
 
 # Node modules
 admin-ui/node_modules/
@@ -39,7 +35,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Environment variables
-.env
-.env.*

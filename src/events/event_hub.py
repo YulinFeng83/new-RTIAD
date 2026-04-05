@@ -42,7 +42,7 @@ class EventHubProducer:
             try:
                 from azure.eventhub import EventHubProducerClient
                 self._producer = EventHubProducerClient.from_connection_string(
-                    conn_str=self._config.connection_string,
+                    conn_str=self._config.resolve_connection_string(),
                     eventhub_name=self._config.event_hub_name,
                 )
                 logger.info("Azure Event Hub producer connected: %s", self._config.event_hub_name)
