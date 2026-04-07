@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import hashlib
 import logging
 import threading
 import time
@@ -62,7 +63,12 @@ class CameraPipeline:
         self._overlay = overlay_renderer
         self._event_hub = event_hub
         self._config = config
-        self._group_engine = GroupLikelihoodEngine(threshold=0.5)
+        self._group_engine = GroupLikelihoodEngine(
+            threshold=0.5,
+            group_rejoin_grace_seconds=config.tracking.group_rejoin_grace_seconds,
+        )
+        self._exit_confirmation_cooldown_seconds = float(config.tracking.exit_confirmation_cooldown_seconds)
+        self._track_lost_timeout_seconds = float(config.tracking.track_lost_timeout_seconds)
 
         self._annotated_frame: Optional[np.ndarray] = None
         self._frame_lock = threading.Lock()
@@ -185,7 +191,7 @@ class CameraPipeline:
             self._classify_and_publish, list(active_tracks), frame.copy(), frame_id, context, ts,
         )
 
-        self._apply_group_assignments(active_tracks)
+        self._apply_group_assignments(active_tracks, ts)
 
         for track, event_data in self._zone_manager.check_crossings(active_tracks, self.camera_id):
             event_timestamp = float(event_data.get("timestamp", ts))
@@ -196,12 +202,21 @@ class CameraPipeline:
 
             dwell_seconds = float(event_data.get("dwell_seconds", 0.0))
             base_event = BaseEvent(
+                event_id=self._make_event_id(
+                    event_type=str(event_data["event_type"]),
+                    track=track,
+                    timestamp=event_timestamp,
+                    zone_session_id=event_data.get("zone_session_id"),
+                    zone_id=zone_id,
+                ),
                 event_type=str(event_data["event_type"]),
                 tenant_id=self._config.store.tenant_id,
                 store_id=self._config.store.store_id,
                 camera_id=self.camera_id,
                 timestamp=event_timestamp,
                 track_id=track.track_id,
+                store_visit_session_id=track.store_visit_session_id,
+                previous_group_id=track.previous_group_id,
                 group_id=track.group_id,
                 zone_id=zone_id,
                 direction=event_data.get("direction"),
@@ -232,11 +247,27 @@ class CameraPipeline:
                     zone_session_id=base_event.zone_session_id,
                 )
                 if ff_event:
+                    if ff_event.event_type == "exit":
+                        track.mark_pending_exit(event_timestamp, self._exit_confirmation_cooldown_seconds)
+                    elif ff_event.event_type == "entry":
+                        track.clear_pending_exit()
                     self._event_hub.send(FootfallUpdate(
+                        event_id=self._make_event_id(
+                            event_type="footfall_updated",
+                            track=track,
+                            timestamp=event_timestamp,
+                            zone_session_id=base_event.zone_session_id,
+                            zone_id=zone_id,
+                        ),
                         event_type="footfall_updated",
                         tenant_id=self._config.store.tenant_id,
                         store_id=self._config.store.store_id,
                         camera_id=self.camera_id,
+                        track_id=track.track_id,
+                        store_visit_session_id=track.store_visit_session_id,
+                        previous_group_id=track.previous_group_id,
+                        group_id=track.group_id,
+                        group_probability=track.group_probability,
                         total_entries=ff_event.stats_snapshot.get("total_entries", 0),
                         total_exits=ff_event.stats_snapshot.get("total_exits", 0),
                         current_in_store=ff_event.stats_snapshot.get("current_in_store", 0),
@@ -244,6 +275,8 @@ class CameraPipeline:
                         shopping_party_entries=ff_event.stats_snapshot.get("shopping_party_entries", 0),
                         timestamp=event_timestamp,
                     ))
+
+        self._emit_completed_sessions(ts)
 
         zones = self._zone_manager.get_zones_for_camera(self.camera_id)
         stats = self._footfall.stats
@@ -265,12 +298,19 @@ class CameraPipeline:
                 if track is None:
                     continue
                 self._event_hub.send(BaseEvent(
+                    event_id=self._make_event_id(
+                        event_type="classification_updated",
+                        track=track,
+                        timestamp=ts,
+                    ),
                     event_type="classification_updated",
                     tenant_id=self._config.store.tenant_id,
                     store_id=self._config.store.store_id,
                     camera_id=self.camera_id,
                     timestamp=ts,
                     track_id=track.track_id,
+                    store_visit_session_id=track.store_visit_session_id,
+                    previous_group_id=track.previous_group_id,
                     group_id=track.group_id,
                     classification_label=payload["classification_label"],
                     employee_probability=payload["employee_probability"],
@@ -285,11 +325,18 @@ class CameraPipeline:
 
     def on_config_change(self, config: AppConfig) -> None:
         self._config = config
+        self._group_engine = GroupLikelihoodEngine(
+            threshold=0.5,
+            group_rejoin_grace_seconds=config.tracking.group_rejoin_grace_seconds,
+        )
+        self._exit_confirmation_cooldown_seconds = float(config.tracking.exit_confirmation_cooldown_seconds)
+        self._track_lost_timeout_seconds = float(config.tracking.track_lost_timeout_seconds)
 
     def _update_track_behavior_context(self, tracks: list[Track], timestamp: float, frame_id: int) -> None:
         pre_open_flag = self._pre_open_entry_flag(timestamp)
         first_n_entries_flag = 1.0 if frame_id < 300 else 0.0
         for track in tracks:
+            track.refresh_session_activity(timestamp)
             track.derived_features["pre_open_entry_flag"] = pre_open_flag
             track.derived_features["first_n_entries_flag"] = first_n_entries_flag
 
@@ -301,25 +348,131 @@ class CameraPipeline:
         window_start = open_minutes - 60
         return 1.0 if window_start <= now_minutes < open_minutes else 0.0
 
-    def _apply_group_assignments(self, tracks: list[Track]) -> None:
+    def _apply_group_assignments(self, tracks: list[Track], timestamp: float) -> None:
         assignments = self._group_engine.assign_groups(tracks)
         logged_groups: set[str] = set()
         for track in tracks:
+            previous_group_id = track.group_id
             assignment = assignments.get(track.track_id)
-            if assignment is None:
+            if assignment is None or assignment["group_id"] is None:
+                if track.group_id:
+                    track.remember_group_membership(timestamp)
                 track.group_id = None
                 track.group_probability = 0.0
                 continue
+
+            if previous_group_id and previous_group_id != assignment["group_id"]:
+                track.previous_group_id = previous_group_id
+                track.last_group_seen_at = timestamp
+
             track.group_id = assignment["group_id"]
             track.group_probability = assignment["group_probability"]
             if assignment["signals"]:
                 track.derived_features["group_signals"] = assignment["signals"]
+            if previous_group_id != track.group_id:
+                self._event_hub.send(BaseEvent(
+                    event_id=self._make_event_id(
+                        event_type="group_updated",
+                        track=track,
+                        timestamp=timestamp,
+                        suffix=track.group_id or "ungrouped",
+                    ),
+                    event_type="group_updated",
+                    tenant_id=self._config.store.tenant_id,
+                    store_id=self._config.store.store_id,
+                    camera_id=self.camera_id,
+                    timestamp=timestamp,
+                    track_id=track.track_id,
+                    store_visit_session_id=track.store_visit_session_id,
+                    previous_group_id=track.previous_group_id,
+                    group_id=track.group_id,
+                    group_probability=track.group_probability,
+                    classification_label=track.label.value,
+                    employee_probability=track.employee_probability,
+                    customer_probability=track.customer_probability,
+                    unknown_probability=track.unknown_probability,
+                    window_start=self._window_start(timestamp),
+                    window_end=self._window_end(timestamp),
+                    group_visitor_count=self._group_visitor_count(track, tracks),
+                ))
             if track.group_id and track.group_id not in logged_groups:
                 logged_groups.add(track.group_id)
                 logger.info(
                     "[%s] Group detected: %s  prob=%.3f",
                     self.camera_id, track.group_id, track.group_probability,
                 )
+
+    def _emit_completed_sessions(self, timestamp: float) -> None:
+        for track in self._tracker.tracks.values():
+            if track.session_completed_emitted:
+                continue
+
+            completed_at: float | None = None
+            if (
+                track.pending_exit_at is not None
+                and track.last_exit_seen_at is not None
+                and timestamp >= track.pending_exit_at
+                and track.last_seen <= track.last_exit_seen_at
+            ):
+                completed_at = track.pending_exit_at
+            elif (not track.is_active) and (timestamp - track.last_seen >= self._track_lost_timeout_seconds):
+                completed_at = track.last_seen + self._track_lost_timeout_seconds
+
+            if completed_at is None:
+                continue
+
+            track.mark_session_completed(completed_at)
+            self._event_hub.send(BaseEvent(
+                event_id=self._make_event_id(
+                    event_type="session_completed",
+                    track=track,
+                    timestamp=completed_at,
+                    suffix=track.store_visit_session_id,
+                ),
+                event_type="session_completed",
+                tenant_id=self._config.store.tenant_id,
+                store_id=self._config.store.store_id,
+                camera_id=self.camera_id,
+                timestamp=completed_at,
+                track_id=track.track_id,
+                store_visit_session_id=track.store_visit_session_id,
+                previous_group_id=track.previous_group_id,
+                group_id=track.group_id,
+                classification_label=track.label.value,
+                employee_probability=track.employee_probability,
+                customer_probability=track.customer_probability,
+                unknown_probability=track.unknown_probability,
+                group_probability=track.group_probability,
+                window_start=self._window_start(completed_at),
+                window_end=self._window_end(completed_at),
+                session_completed_at=completed_at,
+                session_duration_seconds=max(0.0, completed_at - track.store_visit_started_at),
+                total_dwell_seconds=track.total_dwell_seconds,
+                session_entry_count=track.entry_count,
+                session_exit_count=track.exit_count,
+                visited_zones=list(track.zones_visited),
+            ))
+
+    def _make_event_id(
+        self,
+        event_type: str,
+        track: Track,
+        timestamp: float,
+        zone_session_id: str | None = None,
+        zone_id: str | None = None,
+        suffix: str | None = None,
+    ) -> str:
+        raw = "|".join([
+            self.camera_id,
+            event_type,
+            str(track.track_id),
+            track.store_visit_session_id,
+            zone_id or "",
+            zone_session_id or "",
+            suffix or "",
+            f"{timestamp:.6f}",
+        ])
+        return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
     def _window_start(self, timestamp: float) -> float:
         return timestamp - (timestamp % 300)

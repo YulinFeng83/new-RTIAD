@@ -41,6 +41,12 @@ class Track:
     first_seen: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
     is_active: bool = True
+    store_visit_session_id: str = ""
+    store_visit_started_at: float = 0.0
+    session_completed_emitted: bool = False
+    session_completed_at: float | None = None
+    pending_exit_at: float | None = None
+    last_exit_seen_at: float | None = None
 
     _last_classified_frame: int = 0
     entry_count: int = 0
@@ -56,6 +62,8 @@ class Track:
     unknown_probability: float = 1.0
 
     group_id: str | None = None
+    previous_group_id: str | None = None
+    last_group_seen_at: float | None = None
     group_probability: float = 0.0
 
     clip_signals: dict[str, float] = field(default_factory=dict)
@@ -64,6 +72,12 @@ class Track:
 
     counted_entry: bool = False
     counted_exit: bool = False
+
+    def __post_init__(self) -> None:
+        if self.store_visit_started_at <= 0.0:
+            self.store_visit_started_at = self.first_seen
+        if not self.store_visit_session_id:
+            self.store_visit_session_id = self._make_store_visit_session_id(self.store_visit_started_at)
 
     @property
     def current_bbox(self) -> Optional[tuple[int, int, int, int]]:
@@ -80,6 +94,10 @@ class Track:
     @property
     def session_duration_seconds(self) -> float:
         return max(0.0, self.last_seen - self.first_seen)
+
+    @property
+    def store_visit_duration_seconds(self) -> float:
+        return max(0.0, self.last_seen - self.store_visit_started_at)
 
     @property
     def total_dwell_seconds(self) -> float:
@@ -107,6 +125,36 @@ class Track:
         cy = (bbox[1] + bbox[3]) // 2
         self.history.append(TrackPoint(bbox=bbox, centroid=(cx, cy), timestamp=ts, frame_id=frame_id))
         self.last_seen = ts
+
+    def remember_group_membership(self, timestamp: Optional[float] = None) -> None:
+        if not self.group_id:
+            return
+        ts = timestamp or self.last_seen or time.time()
+        self.previous_group_id = self.group_id
+        self.last_group_seen_at = ts
+
+    def clear_pending_exit(self) -> None:
+        self.pending_exit_at = None
+        self.last_exit_seen_at = None
+
+    def mark_pending_exit(self, timestamp: float, cooldown_seconds: float) -> None:
+        self.pending_exit_at = timestamp + cooldown_seconds
+        self.last_exit_seen_at = timestamp
+
+    def mark_session_completed(self, timestamp: float) -> None:
+        self.session_completed_emitted = True
+        self.session_completed_at = timestamp
+        self.clear_pending_exit()
+
+    def refresh_session_activity(self, timestamp: Optional[float] = None) -> None:
+        if self.last_exit_seen_at is None or self.session_completed_emitted:
+            return
+        ts = timestamp or self.last_seen
+        if ts > self.last_exit_seen_at:
+            self.clear_pending_exit()
+
+    def _make_store_visit_session_id(self, timestamp: float) -> str:
+        return f"{self.camera_id}:{self.track_id}:visit:{int(timestamp * 1000)}"
 
     def mark_zone_entered(self, zone_id: str, timestamp: float) -> None:
         self.zone_entry_times[zone_id] = timestamp

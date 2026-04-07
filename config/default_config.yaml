@@ -28,6 +28,9 @@ detection:
 tracking:
   tracker: bytetrack
   max_lost_frames: 30
+  group_rejoin_grace_seconds: 180
+  exit_confirmation_cooldown_seconds: 30
+  track_lost_timeout_seconds: 120
 employee_detection:
   threshold: 0.65
   sticky_labels: true

@@ -65,6 +65,10 @@ class FootfallCounter:
         self._stats = FootfallStats()
         self._lock = threading.Lock()
         self._events: list[FootfallEvent] = []
+        self._counted_group_entries: set[str] = set()
+        self._counted_group_exits: set[str] = set()
+        self._counted_session_entries: set[str] = set()
+        self._counted_session_exits: set[str] = set()
 
     @property
     def stats(self) -> FootfallStats:
@@ -110,20 +114,25 @@ class FootfallCounter:
             return None
 
         with self._lock:
+            session_id = track.store_visit_session_id or f"{track.camera_id}:{track.track_id}"
             if event_type == "entry":
-                if track.counted_entry:
+                if track.counted_entry or session_id in self._counted_session_entries:
                     return None
                 track.counted_entry = True
+                self._counted_session_entries.add(session_id)
                 self._stats.total_entries += 1
-                if track.group_id:
+                if track.group_id and track.group_id not in self._counted_group_entries:
+                    self._counted_group_entries.add(track.group_id)
                     self._stats.shopping_party_entries += 1
                     self._stats.total_group_entries += 1
             elif event_type == "exit":
-                if track.counted_exit:
+                if track.counted_exit or session_id in self._counted_session_exits:
                     return None
                 track.counted_exit = True
+                self._counted_session_exits.add(session_id)
                 self._stats.total_exits += 1
-                if track.group_id:
+                if track.group_id and track.group_id not in self._counted_group_exits:
+                    self._counted_group_exits.add(track.group_id)
                     self._stats.total_group_exits += 1
 
             self._stats.current_in_store = max(
@@ -168,3 +177,7 @@ class FootfallCounter:
         with self._lock:
             self._stats = FootfallStats()
         self._events.clear()
+        self._counted_group_entries.clear()
+        self._counted_group_exits.clear()
+        self._counted_session_entries.clear()
+        self._counted_session_exits.clear()

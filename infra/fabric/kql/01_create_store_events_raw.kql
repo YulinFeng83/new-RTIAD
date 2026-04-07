@@ -3,8 +3,11 @@
     tenant_id:string,
     store_id:string,
     camera_id:string,
+    event_id:string,
     timestamp:datetime,
     track_id:long,
+    store_visit_session_id:string,
+    previous_group_id:string,
     group_id:string,
     zone_id:string,
     direction:string,
@@ -21,5 +24,11 @@
     group_visitor_count:int,
     zone_visitors:int,
     max_dwell_bucket:string,
-    promo_zone_flag:bool
+    promo_zone_flag:bool,
+    session_completed_at:datetime,
+    session_duration_seconds:real,
+    total_dwell_seconds:real,
+    session_entry_count:int,
+    session_exit_count:int,
+    visited_zones:dynamic
 )

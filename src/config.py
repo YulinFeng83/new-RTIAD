@@ -59,6 +59,9 @@ class DetectionConfig(BaseModel):
 class TrackingConfig(BaseModel):
     tracker: str = "bytetrack"
     max_lost_frames: int = 30
+    group_rejoin_grace_seconds: int = 180
+    exit_confirmation_cooldown_seconds: int = 30
+    track_lost_timeout_seconds: int = 120
 
 
 class DressCodePrompts(BaseModel):

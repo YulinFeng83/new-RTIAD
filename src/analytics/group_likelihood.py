@@ -13,8 +13,9 @@ class GroupDecision:
 
 
 class GroupLikelihoodEngine:
-    def __init__(self, threshold: float = 0.72):
+    def __init__(self, threshold: float = 0.72, group_rejoin_grace_seconds: float = 180.0):
         self._threshold = threshold
+        self._group_rejoin_grace_seconds = group_rejoin_grace_seconds
 
     def score_pair(self, track_a: Any, track_b: Any) -> GroupDecision:
         signals = self._score_pair_signals(track_a, track_b)
@@ -96,7 +97,7 @@ class GroupLikelihoodEngine:
             if len(members) < 2:
                 continue
             member_ids = sorted(track.track_id for track in members)
-            group_id = f"group-{members[0].camera_id}-{'-'.join(str(track_id) for track_id in member_ids)}"
+            group_id = self._resolve_group_id(members, member_ids)
             member_probabilities: list[float] = []
             signal_accumulator: dict[str, list[float]] = {}
             for index, track_a in enumerate(members):
@@ -120,6 +121,35 @@ class GroupLikelihoodEngine:
                 }
 
         return assignments
+
+    def _resolve_group_id(self, members: list[Any], member_ids: list[int]) -> str:
+        now = max(float(getattr(track, "last_seen", 0.0)) for track in members)
+        candidate_membership: dict[str, set[int]] = {}
+
+        for track in members:
+            current_group_id = getattr(track, "group_id", None)
+            if current_group_id:
+                candidate_membership.setdefault(current_group_id, set()).add(track.track_id)
+
+            previous_group_id = getattr(track, "previous_group_id", None)
+            last_group_seen_at = getattr(track, "last_group_seen_at", None)
+            if (
+                previous_group_id
+                and last_group_seen_at is not None
+                and now - float(last_group_seen_at) <= self._group_rejoin_grace_seconds
+            ):
+                candidate_membership.setdefault(previous_group_id, set()).add(track.track_id)
+
+        reusable_candidates = [
+            (group_id, len(track_ids))
+            for group_id, track_ids in candidate_membership.items()
+            if len(track_ids) >= 2
+        ]
+        if reusable_candidates:
+            reusable_candidates.sort(key=lambda item: (-item[1], item[0]))
+            return reusable_candidates[0][0]
+
+        return f"group-{members[0].camera_id}-{'-'.join(str(track_id) for track_id in member_ids)}"
 
     def _score_pair_signals(self, track_a: Any, track_b: Any) -> dict[str, float]:
         overlap = min(len(track_a.history), len(track_b.history), 20)
