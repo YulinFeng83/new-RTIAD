@@ -102,6 +102,29 @@ class VideoStream:
             return False, None, -1
         return True, item[0], item[1]
 
+    def read_latest_queued(self) -> tuple[bool, Optional[np.ndarray], int]:
+        """Return the newest buffered frame, dropping stale queued frames."""
+        try:
+            item = self._frame_queue.get(timeout=2.0)
+        except _queue_mod.Empty:
+            return False, None, -1
+
+        latest_item = item
+        while True:
+            try:
+                next_item = self._frame_queue.get_nowait()
+            except _queue_mod.Empty:
+                break
+
+            if next_item is None:
+                latest_item = None
+                break
+            latest_item = next_item
+
+        if latest_item is None:
+            return False, None, -1
+        return True, latest_item[0], latest_item[1]
+
     @property
     def is_running(self) -> bool:
         return self._running
@@ -201,7 +224,13 @@ class VideoStream:
             try:
                 self._frame_queue.put((frame, fid), timeout=2.0)
             except _queue_mod.Full:
-                pass
+                try:
+                    self._frame_queue.get_nowait()
+                    self._frame_queue.put_nowait((frame, fid))
+                except _queue_mod.Empty:
+                    pass
+                except _queue_mod.Full:
+                    pass
 
             if self._source_type == "file":
                 time.sleep(frame_interval)

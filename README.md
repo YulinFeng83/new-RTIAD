@@ -96,6 +96,18 @@ python -m src.main
 
 # Or specify a custom config file
 python -m src.main path/to/my_config.yaml
+
+# Run the configured test cameras and save annotated outputs
+python -m src.main --save-output --output-dir ./outputs
+
+# Or run directly against all videos in a folder
+python -m src.main --video-dir ./data/videos
+
+# Or run one or more specific test videos
+python -m src.main --video ./test\ data\video1.mp4 --video ./test\ data\video2.mp4
+
+# Saved annotated outputs go to ./outputs by default
+python -m src.main --video-dir ./data/videos --output-dir ./outputs
 ```
 
 The backend starts on **http://localhost:8000** and exposes:
@@ -134,6 +146,29 @@ The admin UI starts on **http://localhost:5173** and proxies API requests to the
 
 The system supports video files as a camera source for testing without real RTSP cameras.
 
+### Simplest tester workflow
+
+1. Use the configured test cameras in `config/default_config.yaml`, or put arbitrary videos in `data/videos/`.
+2. Start the backend with `python -m src.main --save-output --output-dir ./outputs` for the curated config-driven test set.
+3. Start the UI with `cd admin-ui` then `npm run dev`.
+4. Open `http://localhost:5173`.
+
+This keeps the original configured camera IDs, scene types, and logic intact while saving annotated outputs to `outputs/`.
+
+If a tester wants to try arbitrary videos without editing YAML, use:
+
+```bash
+python -m src.main --video-dir ./data/videos --output-dir ./outputs
+```
+
+That mode automatically creates one camera per video file, disables Event Hub, loops the videos by default, and saves annotated outputs to `outputs/`.
+
+If needed, output saving can be disabled:
+
+```bash
+python -m src.main --video-dir ./data/videos --no-save-output
+```
+
 ### Step-by-step
 
 1. **Get test videos** — place any MP4/AVI files with people walking in `data/videos/`:
@@ -142,7 +177,7 @@ The system supports video files as a camera source for testing without real RTSP
    retailvision/data/videos/outdoor.mp4
    ```
 
-2. **Configure cameras** — `config/default_config.yaml` already has two cameras set up:
+2. **Configure cameras** — either use `python -m src.main --video-dir ./data/videos` or edit `config/default_config.yaml` manually. A manual example looks like:
    ```yaml
    cameras:
      - id: "cam_indoor"
@@ -159,7 +194,7 @@ The system supports video files as a camera source for testing without real RTSP
 3. **Start the backend**:
    ```bash
    cd retailvision
-   python -m src.main
+  python -m src.main --video-dir ./data/videos
    ```
 
 4. **View the raw MJPEG feeds** (no UI needed):

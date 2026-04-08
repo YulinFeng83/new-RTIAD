@@ -72,6 +72,7 @@ class PersonTracker:
             classes=[PERSON_CLASS_ID],
             conf=self._det_config.confidence,
             iou=self._det_config.iou_threshold,
+            imgsz=self._det_config.imgsz,
             tracker=f"{self._trk_config.tracker}.yaml",
             persist=True,
             verbose=False,

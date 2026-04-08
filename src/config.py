@@ -8,9 +8,10 @@ for hot-reload on config changes.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -18,6 +19,8 @@ from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from watchdog.observers import Observer
 
 logger = logging.getLogger(__name__)
+
+_VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".m4v", ".wmv"}
 
 # ---------------------------------------------------------------------------
 # Pydantic config models
@@ -31,6 +34,8 @@ class SystemConfig(BaseModel):
     model_precision: str = "fp32"
     log_level: str = "INFO"
     max_duration_seconds: int = 0  # 0 = unlimited
+    record_output: bool = False
+    output_dir: str = "outputs"
 
 
 class ZoneConfig(BaseModel):
@@ -54,6 +59,7 @@ class DetectionConfig(BaseModel):
     model: str = "yolov8s.pt"
     confidence: float = 0.5
     iou_threshold: float = 0.45
+    imgsz: int = 640
 
 
 class TrackingConfig(BaseModel):
@@ -142,6 +148,61 @@ class AppConfig(BaseModel):
     overlay: OverlayConfig = Field(default_factory=OverlayConfig)
 
 
+def discover_video_files(video_dir: Path | str) -> list[Path]:
+    path = Path(video_dir).resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Video directory not found: {path}")
+    if not path.is_dir():
+        raise NotADirectoryError(f"Video path is not a directory: {path}")
+
+    videos = sorted(p for p in path.iterdir() if p.is_file() and p.suffix.lower() in _VIDEO_EXTENSIONS)
+    if not videos:
+        raise FileNotFoundError(f"No video files found in {path}")
+    return videos
+
+
+def build_test_video_config(
+    base_config: AppConfig,
+    video_paths: Iterable[Path | str],
+    *,
+    loop: bool = True,
+    record_output: bool = True,
+    output_dir: str = "outputs",
+) -> AppConfig:
+    cfg = base_config.model_copy(deep=True)
+    resolved_paths = [Path(p).resolve() for p in video_paths]
+    if not resolved_paths:
+        raise ValueError("At least one video path is required")
+
+    cfg.cameras = [
+        CameraConfig(
+            id=_make_camera_id(path, index),
+            url=str(path),
+            scene_type=_infer_scene_type(path),
+            loop=loop,
+            zones=[],
+        )
+        for index, path in enumerate(resolved_paths, start=1)
+    ]
+    cfg.event_hub.enabled = False
+    cfg.system.max_duration_seconds = 0
+    cfg.system.record_output = record_output
+    cfg.system.output_dir = output_dir
+    return cfg
+
+
+def _make_camera_id(path: Path, index: int) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", path.stem.lower()).strip("_")
+    slug = slug or f"video_{index}"
+    return f"cam_{slug}"
+
+
+def _infer_scene_type(path: Path) -> str:
+    name = path.stem.lower()
+    outdoor_tokens = ("outdoor", "outside", "exterior", "parking", "street")
+    return "outdoor" if any(token in name for token in outdoor_tokens) else "indoor"
+
+
 # ---------------------------------------------------------------------------
 # YAML loader
 # ---------------------------------------------------------------------------
@@ -210,7 +271,7 @@ class ConfigManager:
         self._config = load_config(self._path)
         self._lock = threading.Lock()
         self._callbacks: list[Callable[[AppConfig], None]] = []
-        self._observer: Optional[Observer] = None
+        self._observer = None
 
     @property
     def config(self) -> AppConfig:

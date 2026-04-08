@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import hashlib
 import logging
+import queue as _queue_mod
 import threading
 import time
 from typing import Any, Optional
@@ -76,6 +77,8 @@ class CameraPipeline:
         self._thread: Optional[threading.Thread] = None
         self._processed_count = 0
         self._video_writer: Optional[cv2.VideoWriter] = None
+        self._output_queue: _queue_mod.Queue = _queue_mod.Queue(maxsize=180)
+        self._writer_thread: Optional[threading.Thread] = None
         self._clip_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix=f"clip-{camera_id}",
         )
@@ -84,6 +87,8 @@ class CameraPipeline:
         if self._running:
             return
         self._running = True
+        if self._config.system.record_output:
+            self._start_writer_thread()
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
         logger.info("[%s] Pipeline started", self.camera_id)
@@ -93,6 +98,7 @@ class CameraPipeline:
         if self._thread:
             self._thread.join(timeout=10)
             self._thread = None
+        self._stop_writer_thread()
         self._clip_executor.shutdown(wait=True, cancel_futures=True)
         if self._video_writer is not None:
             self._video_writer.release()
@@ -123,7 +129,7 @@ class CameraPipeline:
                 )
                 break
 
-            ok, frame, frame_id = self._stream.read_queued()
+            ok, frame, frame_id = self._stream.read_latest_queued()
             if not ok or frame is None:
                 if not self._stream.is_running:
                     logger.info("[%s] Stream ended, finishing pipeline", self.camera_id)
@@ -148,8 +154,9 @@ class CameraPipeline:
 
             with self._frame_lock:
                 self._annotated_frame = annotated
-            self._write_frame(annotated)
-            write_counter += 1
+            if self._config.system.record_output:
+                self._enqueue_output_frame(annotated)
+                write_counter += 1
 
         if self._video_writer is not None:
             self._video_writer.release()
@@ -159,7 +166,7 @@ class CameraPipeline:
     def _write_frame(self, frame: np.ndarray) -> None:
         if self._video_writer is None:
             from pathlib import Path
-            out_dir = Path("outputs")
+            out_dir = Path(self._config.system.output_dir)
             out_dir.mkdir(exist_ok=True)
             h, w = frame.shape[:2]
             out_path = out_dir / f"{self.camera_id}_output.mp4"
@@ -172,6 +179,44 @@ class CameraPipeline:
             )
             logger.info("[%s] Recording to %s (%dx%d @ %d fps)", self.camera_id, out_path, w, h, fps)
         self._video_writer.write(frame)
+
+    def _start_writer_thread(self) -> None:
+        if self._writer_thread is not None:
+            return
+        self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True)
+        self._writer_thread.start()
+
+    def _stop_writer_thread(self) -> None:
+        if self._writer_thread is None:
+            return
+        try:
+            self._output_queue.put(None, timeout=1.0)
+        except _queue_mod.Full:
+            pass
+        self._writer_thread.join(timeout=10)
+        self._writer_thread = None
+
+    def _enqueue_output_frame(self, frame: np.ndarray) -> None:
+        try:
+            self._output_queue.put_nowait(frame.copy())
+        except _queue_mod.Full:
+            try:
+                self._output_queue.get_nowait()
+                self._output_queue.put_nowait(frame.copy())
+            except (_queue_mod.Empty, _queue_mod.Full):
+                pass
+
+    def _writer_loop(self) -> None:
+        while True:
+            try:
+                item = self._output_queue.get(timeout=1.0)
+            except _queue_mod.Empty:
+                if not self._running:
+                    break
+                continue
+            if item is None:
+                break
+            self._write_frame(item)
 
     def _process_frame(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
         ts = time.time()

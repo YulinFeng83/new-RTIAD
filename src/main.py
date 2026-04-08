@@ -7,6 +7,7 @@ the FastAPI server.
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 import threading
@@ -20,7 +21,7 @@ import uvicorn
 from src.api.app import create_app
 from src.api.deps import app_state
 from src.camera.manager import CameraManager
-from src.config import ConfigManager
+from src.config import ConfigManager, build_test_video_config, discover_video_files
 from src.counting.footfall_counter import FootfallCounter
 from src.events.event_hub import EventHubProducer
 from src.models.employee_classifier import EmployeeClassifier
@@ -32,6 +33,20 @@ from src.zones.zone_manager import ZoneManager
 logger = logging.getLogger(__name__)
 
 
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run RetailVision")
+    parser.add_argument("config_path", nargs="?", help="Path to a YAML config file")
+    parser.add_argument("--video-dir", help="Load all videos from a directory as test cameras")
+    parser.add_argument("--video", action="append", default=[], help="Add a specific test video path")
+    parser.add_argument("--single-pass", action="store_true", help="Do not loop test videos")
+    parser.add_argument("--output-dir", default="outputs", help="Directory for saved annotated video outputs")
+    save_group = parser.add_mutually_exclusive_group()
+    save_group.add_argument("--save-output", dest="save_output", action="store_true", help="Save annotated video outputs")
+    save_group.add_argument("--no-save-output", dest="save_output", action="store_false", help="Disable saving annotated video outputs")
+    parser.set_defaults(save_output=None)
+    return parser.parse_args(argv)
+
+
 def setup_logging(level: str = "INFO") -> None:
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
@@ -40,12 +55,46 @@ def setup_logging(level: str = "INFO") -> None:
     )
 
 
-def main(config_path: str | None = None) -> None:
+def main(
+    config_path: str | None = None,
+    *,
+    video_dir: str | None = None,
+    video_paths: list[str] | None = None,
+    loop_videos: bool = True,
+    record_output: bool | None = None,
+    output_dir: str = "outputs",
+) -> None:
     config_mgr = ConfigManager(config_path)
+
+    selected_videos: list[Path] = []
+    if video_dir:
+        selected_videos.extend(discover_video_files(video_dir))
+    if video_paths:
+        selected_videos.extend(Path(p).resolve() for p in video_paths)
+    if selected_videos:
+        cfg = build_test_video_config(
+            config_mgr.config,
+            selected_videos,
+            loop=loop_videos,
+            record_output=True if record_output is None else record_output,
+            output_dir=output_dir,
+        )
+        config_mgr.update_config(cfg, persist=False)
+
     cfg = config_mgr.config
+    if not selected_videos:
+        if record_output is not None:
+            cfg.system.record_output = record_output
+        cfg.system.output_dir = output_dir
 
     setup_logging(cfg.system.log_level)
     logger.info("Starting RetailVision — store: %s", cfg.store.name)
+    if selected_videos:
+        logger.info("Loaded %d test videos", len(selected_videos))
+        if cfg.system.record_output:
+            logger.info("Saving annotated outputs to %s", cfg.system.output_dir)
+        for camera in cfg.cameras:
+            logger.info("Test camera %s -> %s", camera.id, camera.url)
 
     # --- Camera manager ---
     camera_mgr = CameraManager(cfg)
@@ -136,5 +185,12 @@ def main(config_path: str | None = None) -> None:
 
 
 if __name__ == "__main__":
-    config_file = sys.argv[1] if len(sys.argv) > 1 else None
-    main(config_file)
+    args = parse_args(sys.argv[1:])
+    main(
+        args.config_path,
+        video_dir=args.video_dir,
+        video_paths=args.video,
+        loop_videos=not args.single_pass,
+        record_output=args.save_output,
+        output_dir=args.output_dir,
+    )

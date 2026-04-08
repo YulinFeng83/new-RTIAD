@@ -4,27 +4,30 @@ system:
   device: cpu
   model_precision: fp32
   log_level: INFO
-  max_duration_seconds: 60
+  max_duration_seconds: 0
+  record_output: false
+  output_dir: outputs
 cameras:
 - id: cam_indoor_G419
   url: "./test data/2018-03-07.16-50-00.16-55-00.school.G419.mp4"
   scene_type: indoor
-  loop: false
+  loop: true
   zones: []
 - id: cam_indoor_G420
   url: "./test data/2018-03-07.16-50-01.16-55-01.school.G420.mp4"
   scene_type: indoor
-  loop: false
+  loop: true
   zones: []
 - id: cam_outdoor_G300
   url: "./test data/2018-03-07.16-50-06.16-55-06.school.G300.mp4"
   scene_type: outdoor
-  loop: false
+  loop: true
   zones: []
 detection:
   model: yolov8s.pt
   confidence: 0.25
   iou_threshold: 0.45
+  imgsz: 640
 tracking:
   tracker: bytetrack
   max_lost_frames: 30
@@ -68,7 +71,7 @@ store:
   close_time: '21:00'
   promo_zone_ids: []
 event_hub:
-  enabled: true
+  enabled: false
   connection_string: 'sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695'  # Set via EVENTHUB_CONNECTION_STRING env var in .env
   event_hub_name: 'es_a9ee9937-04bc-4c97-896d-227e60eb7695'
   batch_size: 10
