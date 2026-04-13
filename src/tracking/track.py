@@ -154,7 +154,7 @@ class Track:
             self.clear_pending_exit()
 
     def _make_store_visit_session_id(self, timestamp: float) -> str:
-        return f"{self.camera_id}:{self.track_id}:visit:{int(timestamp * 1000)}"
+        return f"sess-{self.track_id}-{int(timestamp * 1000)}"
 
     def mark_zone_entered(self, zone_id: str, timestamp: float) -> None:
         self.zone_entry_times[zone_id] = timestamp
@@ -175,7 +175,7 @@ class Track:
         self.zone_visit_counts[zone_id] = visit_count
         self.entry_count += 1
         self.mark_zone_entered(zone_id, ts)
-        session_id = f"{self.camera_id}:{self.track_id}:{zone_id}:{visit_count}"
+        session_id = f"zsess-{zone_id}-{visit_count:03d}"
         self.active_zone_session_ids[zone_id] = session_id
         return session_id
 

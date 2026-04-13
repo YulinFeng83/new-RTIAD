@@ -89,8 +89,8 @@ class EmployeeDetectionConfig(BaseModel):
 
 
 class StoreConfig(BaseModel):
-    tenant_id: str = "tenant_1"
-    store_id: str = "store_1"
+    tenant_id: str = "test-tenant"
+    store_id: str = "test-store"
     name: str = "Store Alpha"
     open_time: str = "09:00"
     close_time: str = "21:00"

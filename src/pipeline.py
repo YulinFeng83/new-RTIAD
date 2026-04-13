@@ -472,7 +472,8 @@ class CameraPipeline:
             suffix or "",
             f"{timestamp:.6f}",
         ])
-        return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+        return f"evt-{digest[:20]}"
 
     def _window_start(self, timestamp: float) -> float:
         return timestamp - (timestamp % 300)
@@ -491,7 +492,7 @@ class CameraPipeline:
         if dwell_seconds < 30:
             return "<30s"
         if dwell_seconds < 60:
-            return "30–60s"
+            return "30-60s"
         if dwell_seconds < 120:
-            return "60–120s"
+            return "60-120s"
         return ">120s"

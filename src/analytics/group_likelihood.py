@@ -149,7 +149,7 @@ class GroupLikelihoodEngine:
             reusable_candidates.sort(key=lambda item: (-item[1], item[0]))
             return reusable_candidates[0][0]
 
-        return f"group-{members[0].camera_id}-{'-'.join(str(track_id) for track_id in member_ids)}"
+        return f"grp-{'-'.join(str(track_id) for track_id in member_ids)}"
 
     def _score_pair_signals(self, track_a: Any, track_b: Any) -> dict[str, float]:
         overlap = min(len(track_a.history), len(track_b.history), 20)
