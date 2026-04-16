@@ -1,9 +1,0 @@
-.create async materialized-view store_revenue_5m_mv on table pos_events_rt {
-    pos_events_rt
-    | extend ts = todatetime(transaction_timestamp)
-    | summarize
-        transaction_count = count(),
-        revenue_amount = sum(total_amount)
-      by tenant_id, store_id,
-         window_start = bin(ts, 5m)
-}

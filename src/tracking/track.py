@@ -18,6 +18,9 @@ class PersonLabel(str, Enum):
     CUSTOMER = "customer"
 
 
+UNGROUPED_LINEAGE_TOKEN = "ungrouped"
+
+
 @dataclass
 class TrackPoint:
     bbox: tuple[int, int, int, int]      # x1, y1, x2, y2
@@ -65,6 +68,15 @@ class Track:
     previous_group_id: str | None = None
     last_group_seen_at: float | None = None
     group_probability: float = 0.0
+    group_lineage: list[str] = field(default_factory=list)
+    split_detected_flag: bool = False
+    regroup_detected_flag: bool = False
+    merge_detected_flag: bool = False
+
+    store_entry_zone_id: str | None = None
+    store_exit_zone_id: str | None = None
+    store_entry_at: float | None = None
+    store_exit_at: float | None = None
 
     clip_signals: dict[str, float] = field(default_factory=dict)
     derived_features: dict[str, float] = field(default_factory=dict)
@@ -133,6 +145,37 @@ class Track:
         self.previous_group_id = self.group_id
         self.last_group_seen_at = ts
 
+    def record_group_transition(
+        self,
+        previous_group_id: str | None,
+        new_group_id: str | None,
+    ) -> None:
+        if previous_group_id == new_group_id:
+            return
+
+        if previous_group_id and (not self.group_lineage or self.group_lineage[-1] != previous_group_id):
+            self.group_lineage.append(previous_group_id)
+
+        if previous_group_id and new_group_id is None:
+            self.split_detected_flag = True
+            if not self.group_lineage or self.group_lineage[-1] != UNGROUPED_LINEAGE_TOKEN:
+                self.group_lineage.append(UNGROUPED_LINEAGE_TOKEN)
+            return
+
+        if new_group_id is None:
+            return
+
+        if previous_group_id is None:
+            if self.previous_group_id == new_group_id or new_group_id in self.group_lineage:
+                self.regroup_detected_flag = True
+        elif previous_group_id != new_group_id:
+            self.merge_detected_flag = True
+            if new_group_id in self.group_lineage:
+                self.regroup_detected_flag = True
+
+        if not self.group_lineage or self.group_lineage[-1] != new_group_id:
+            self.group_lineage.append(new_group_id)
+
     def clear_pending_exit(self) -> None:
         self.pending_exit_at = None
         self.last_exit_seen_at = None
@@ -155,6 +198,16 @@ class Track:
 
     def _make_store_visit_session_id(self, timestamp: float) -> str:
         return f"sess-{self.track_id}-{int(timestamp * 1000)}"
+
+    def mark_store_entry(self, zone_id: str, timestamp: float) -> None:
+        if self.store_entry_zone_id is None:
+            self.store_entry_zone_id = zone_id
+        if self.store_entry_at is None:
+            self.store_entry_at = timestamp
+
+    def mark_store_exit(self, zone_id: str, timestamp: float) -> None:
+        self.store_exit_zone_id = zone_id
+        self.store_exit_at = timestamp
 
     def mark_zone_entered(self, zone_id: str, timestamp: float) -> None:
         self.zone_entry_times[zone_id] = timestamp

@@ -93,11 +93,18 @@ class GroupLikelihoodEngine:
         for track in tracks:
             groups.setdefault(find(track.track_id), []).append(track)
 
-        for members in groups.values():
+        reserved_group_ids: set[str] = set()
+        grouped_members = sorted(
+            groups.values(),
+            key=lambda members: (-len(members), [track.track_id for track in members]),
+        )
+
+        for members in grouped_members:
             if len(members) < 2:
                 continue
             member_ids = sorted(track.track_id for track in members)
-            group_id = self._resolve_group_id(members, member_ids)
+            group_id = self._resolve_group_id(members, member_ids, reserved_group_ids)
+            reserved_group_ids.add(group_id)
             member_probabilities: list[float] = []
             signal_accumulator: dict[str, list[float]] = {}
             for index, track_a in enumerate(members):
@@ -122,7 +129,12 @@ class GroupLikelihoodEngine:
 
         return assignments
 
-    def _resolve_group_id(self, members: list[Any], member_ids: list[int]) -> str:
+    def _resolve_group_id(
+        self,
+        members: list[Any],
+        member_ids: list[int],
+        reserved_group_ids: set[str] | None = None,
+    ) -> str:
         now = max(float(getattr(track, "last_seen", 0.0)) for track in members)
         candidate_membership: dict[str, set[int]] = {}
 
@@ -143,7 +155,7 @@ class GroupLikelihoodEngine:
         reusable_candidates = [
             (group_id, len(track_ids))
             for group_id, track_ids in candidate_membership.items()
-            if len(track_ids) >= 2
+            if len(track_ids) >= 2 and group_id not in (reserved_group_ids or set())
         ]
         if reusable_candidates:
             reusable_candidates.sort(key=lambda item: (-item[1], item[0]))

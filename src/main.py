@@ -38,6 +38,11 @@ def setup_logging(level: str = "INFO") -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         stream=sys.stdout,
     )
+    logging.getLogger("azure").setLevel(logging.WARNING)
+    logging.getLogger("azure.eventhub").setLevel(logging.WARNING)
+    logging.getLogger("azure.eventhub._pyamqp").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
 
 
 def main(config_path: str | None = None) -> None:

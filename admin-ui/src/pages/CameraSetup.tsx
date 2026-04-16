@@ -8,47 +8,29 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import ZoneDrawer from '../components/ZoneDrawer'
+import type { CameraInfo, ZoneInfo } from '../store-context'
 
 interface CameraSetupProps {
-  cameraId: string
-  onZoneChange: () => void
+  camera?: CameraInfo
+  storeName: string
+  onZoneChange: () => Promise<void>
 }
 
-interface ZoneData {
-  id: string
-  camera_id: string
-  type: string
-  polygon: number[][]
-  direction: number[]
-  name: string
-}
-
-export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps) {
+export default function CameraSetup({ camera, storeName, onZoneChange }: CameraSetupProps) {
   const [feedDimensions, setFeedDimensions] = useState({ width: 0, height: 0 })
-  const [zones, setZones] = useState<ZoneData[]>([])
   const [drawMode, setDrawMode] = useState(false)
   const [feedError, setFeedError] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
 
-  const feedUrl = `/api/v1/cameras/${cameraId}/feed`
+  const cameraId = camera?.id || ''
+  const zones = camera?.zones || []
 
-  const fetchZones = useCallback(async () => {
-    try {
-      const res = await fetch('/api/v1/cameras')
-      const cameras = await res.json()
-      const cam = cameras.find((c: any) => c.id === cameraId)
-      if (cam) {
-        setZones(cam.zones)
-      }
-    } catch (err) {
-      console.error('Failed to fetch zones:', err)
-    }
-  }, [cameraId])
+  const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:8000`
+  const feedUrl = `${API_BASE}/api/v1/cameras/${cameraId}/feed`
 
   useEffect(() => {
-    fetchZones()
     setFeedError(false)
-  }, [fetchZones])
+  }, [cameraId])
 
   const handleFeedLoad = () => {
     if (imgRef.current) {
@@ -60,8 +42,7 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
   }
 
   const handleZoneSaved = () => {
-    fetchZones()
-    onZoneChange()
+    void onZoneChange()
   }
 
   const zoneColor = (zoneType: string) => {
@@ -76,12 +57,23 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
     return zoneType
   }
 
+  if (!camera) {
+    return (
+      <div className="rounded-lg border border-gray-800 bg-gray-900 p-6 text-sm text-gray-400">
+        The selected camera is not available in the current store context.
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold flex items-center gap-3">
-          Camera: <span className="text-blue-400">{cameraId}</span>
-        </h2>
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">{storeName}</p>
+          <h2 className="mt-2 text-lg font-semibold flex items-center gap-3">
+            Camera: <span className="text-blue-400">{cameraId}</span>
+          </h2>
+        </div>
         <button
           onClick={() => setDrawMode(!drawMode)}
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
@@ -111,6 +103,7 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
           </div>
         ) : (
           <img
+            key={feedUrl}
             ref={imgRef}
             src={feedUrl}
             alt={`Live feed: ${cameraId}`}
@@ -137,7 +130,7 @@ export default function CameraSetup({ cameraId, onZoneChange }: CameraSetupProps
           canvasId="zone-canvas"
           feedWidth={feedDimensions.width}
           feedHeight={feedDimensions.height}
-          existingZones={zones}
+          existingZones={zones as ZoneInfo[]}
           onZoneSaved={handleZoneSaved}
         />
       )}

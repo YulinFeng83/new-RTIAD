@@ -1,16 +1,39 @@
 system:
   fps_target: 15
-  frame_skip: 2
+  frame_skip: 1
   device: cpu
   model_precision: fp32
   log_level: INFO
   max_duration_seconds: 60
 cameras:
 - id: cam-01
-  url: "rtsp://admin:Royalcyber26@192.168.7.40:10554/tcp/av0_0"
+  url: rtsp://admin:Royalcyber26@192.168.7.40:10554/tcp/av0_0
+  store_id: test-store
+  store_name: Store Alpha
   scene_type: indoor
   loop: false
-  zones: []
+  rotation_degrees: 180
+  zones:
+  - id: zone_1776284758330
+    type: bidirectional
+    polygon:
+    - - 1920
+      - 1200
+    - - 1887
+      - 327
+    - - 1120
+      - 369
+    - - 1135
+      - 1100
+    - - 1918
+      - 1181
+    - - 1918
+      - 1181
+    direction:
+    - 0.6816843929866371
+    - 0.7316463547086393
+    name: zone_1776284758330
+    promo_zone_flag: false
 detection:
   model: yolov8s.pt
   confidence: 0.25
@@ -25,7 +48,7 @@ employee_detection:
   threshold: 0.65
   sticky_labels: true
   re_eval_threshold: 0.3
-  classify_every_n_frames: 45
+  classify_every_n_frames: 90
   max_employees: 2
   strategies:
   - name: dress_code
@@ -60,15 +83,15 @@ store:
   - zone-a
 event_hub:
   enabled: true
-  connection_string: 'sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695'  # Set via EVENTHUB_CONNECTION_STRING env var in .env
-  event_hub_name: 'es_a9ee9937-04bc-4c97-896d-227e60eb7695'
+  connection_string: Endpoint=sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695
+  event_hub_name: es_a9ee9937-04bc-4c97-896d-227e60eb7695
   batch_size: 10
   send_interval_seconds: 5
 overlay:
   show_bboxes: true
-  show_labels: true
+  show_labels: false
   show_zones: true
-  show_stats_hud: true
+  show_stats_hud: false
   bbox_thickness: 2
   font_scale: 0.6
   colors:

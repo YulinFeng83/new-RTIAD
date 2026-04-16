@@ -35,6 +35,7 @@ class CameraManager:
             camera_id=cam.id,
             target_fps=app_cfg.system.fps_target,
             loop=cam.loop,
+            rotation_degrees=cam.rotation_degrees,
         )
 
     def start_all(self) -> None:

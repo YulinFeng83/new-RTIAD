@@ -70,12 +70,20 @@ class EventHubProducer:
     def send(self, event: Any) -> None:
         """Queue an event for batched sending."""
         payload = self._normalize_event(event)
+        if self._enabled:
+            logger.info("[Emit->EventHub] %s", json.dumps(payload, default=str))
+        else:
+            logger.info("[Emit->Local] %s", json.dumps(payload, default=str))
+        if not self._enabled:
+            return
         with self._lock:
             self._buffer.append(payload)
 
     def _normalize_event(self, event: Any) -> dict[str, Any]:
         if isinstance(event, dict):
             return event
+        if hasattr(event, "to_eventhub_payload"):
+            return event.to_eventhub_payload()
         if hasattr(event, "to_dict"):
             return event.to_dict()
         if is_dataclass(event):
@@ -115,7 +123,7 @@ class EventHubProducer:
                     event_batch.add(data)
 
             self._producer.send_batch(event_batch)
-            logger.debug("Sent %d events to Event Hub", len(events))
+            logger.info("Sent %d events to Event Hub", len(events))
 
         except Exception:
             logger.exception("Failed to send batch to Event Hub — %d events lost", len(events))

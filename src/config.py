@@ -45,8 +45,11 @@ class ZoneConfig(BaseModel):
 class CameraConfig(BaseModel):
     id: str
     url: str = ""
+    store_id: str = ""
+    store_name: str = ""
     scene_type: str = "indoor"
     loop: bool = True
+    rotation_degrees: int = 0
     zones: list[ZoneConfig] = Field(default_factory=list)
 
 
