@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+import hashlib
 import logging
 import threading
 import time
 from typing import Any, Optional
 
 import numpy as np
-import cv2
 
 from src.camera.stream import VideoStream
 from src.analytics.group_likelihood import GroupLikelihoodEngine
@@ -62,14 +62,18 @@ class CameraPipeline:
         self._overlay = overlay_renderer
         self._event_hub = event_hub
         self._config = config
-        self._group_engine = GroupLikelihoodEngine(threshold=0.5)
+        self._group_engine = GroupLikelihoodEngine(
+            threshold=0.5,
+            group_rejoin_grace_seconds=config.tracking.group_rejoin_grace_seconds,
+        )
+        self._exit_confirmation_cooldown_seconds = float(config.tracking.exit_confirmation_cooldown_seconds)
+        self._track_lost_timeout_seconds = float(config.tracking.track_lost_timeout_seconds)
 
         self._annotated_frame: Optional[np.ndarray] = None
         self._frame_lock = threading.Lock()
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._processed_count = 0
-        self._video_writer: Optional[cv2.VideoWriter] = None
         self._clip_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix=f"clip-{camera_id}",
         )
@@ -88,10 +92,6 @@ class CameraPipeline:
             self._thread.join(timeout=10)
             self._thread = None
         self._clip_executor.shutdown(wait=True, cancel_futures=True)
-        if self._video_writer is not None:
-            self._video_writer.release()
-            self._video_writer = None
-            logger.info("[%s] Video output saved", self.camera_id)
         logger.info("[%s] Pipeline stopped", self.camera_id)
 
     def get_annotated_frame(self) -> Optional[np.ndarray]:
@@ -107,7 +107,7 @@ class CameraPipeline:
         max_frames = max_seconds * fps if max_seconds > 0 else 0
         last_tracks: list[Track] = []
         last_zones: list = []
-        last_stats = self._footfall.stats
+        last_stats = self._footfall.stats_for_store(self._camera_store_id())
 
         while self._running:
             if max_frames > 0 and frame_counter >= max_frames:
@@ -133,7 +133,7 @@ class CameraPipeline:
                     annotated = self._process_frame(frame, frame_id)
                     last_tracks = self._tracker.active_tracks()
                     last_zones = self._zone_manager.get_zones_for_camera(self.camera_id)
-                    last_stats = self._footfall.stats
+                    last_stats = self._footfall.stats_for_store(self._camera_store_id())
                 except Exception:
                     logger.exception("[%s] Error processing frame %d", self.camera_id, frame_id)
                     annotated = frame
@@ -142,33 +142,11 @@ class CameraPipeline:
 
             with self._frame_lock:
                 self._annotated_frame = annotated
-            self._write_frame(annotated)
             write_counter += 1
-
-        if self._video_writer is not None:
-            self._video_writer.release()
-            self._video_writer = None
-            logger.info("[%s] Video output saved (%d written, %d processed)", self.camera_id, write_counter, self._processed_count)
-
-    def _write_frame(self, frame: np.ndarray) -> None:
-        if self._video_writer is None:
-            from pathlib import Path
-            out_dir = Path("outputs")
-            out_dir.mkdir(exist_ok=True)
-            h, w = frame.shape[:2]
-            out_path = out_dir / f"{self.camera_id}_output.mp4"
-            fps = self._config.system.fps_target
-            self._video_writer = cv2.VideoWriter(
-                str(out_path),
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                fps,
-                (w, h),
-            )
-            logger.info("[%s] Recording to %s (%dx%d @ %d fps)", self.camera_id, out_path, w, h, fps)
-        self._video_writer.write(frame)
 
     def _process_frame(self, frame: np.ndarray, frame_id: int) -> np.ndarray:
         ts = time.time()
+        camera_store_id = self._camera_store_id()
 
         active_tracks = self._tracker.update(frame, frame_id)
         self._update_track_behavior_context(active_tracks, ts, frame_id)
@@ -185,7 +163,7 @@ class CameraPipeline:
             self._classify_and_publish, list(active_tracks), frame.copy(), frame_id, context, ts,
         )
 
-        self._apply_group_assignments(active_tracks)
+        self._apply_group_assignments(active_tracks, ts)
 
         for track, event_data in self._zone_manager.check_crossings(active_tracks, self.camera_id):
             event_timestamp = float(event_data.get("timestamp", ts))
@@ -195,23 +173,36 @@ class CameraPipeline:
                 continue
 
             dwell_seconds = float(event_data.get("dwell_seconds", 0.0))
+            raw_event_type = str(event_data["event_type"])
+            raw_direction = event_data.get("direction")
+            raw_zone_session_id = event_data.get("zone_session_id")
+
             base_event = BaseEvent(
-                event_type=str(event_data["event_type"]),
+                event_id=self._make_event_id(
+                    event_type=raw_event_type,
+                    track=track,
+                    timestamp=event_timestamp,
+                    zone_session_id=raw_zone_session_id,
+                    zone_id=zone_id,
+                ),
+                event_type=raw_event_type,
                 tenant_id=self._config.store.tenant_id,
-                store_id=self._config.store.store_id,
+                store_id=camera_store_id,
                 camera_id=self.camera_id,
                 timestamp=event_timestamp,
                 track_id=track.track_id,
+                store_visit_session_id=track.store_visit_session_id,
+                previous_group_id=track.previous_group_id,
                 group_id=track.group_id,
                 zone_id=zone_id,
-                direction=event_data.get("direction"),
+                direction=raw_direction,
                 classification_label=track.label.value,
                 employee_probability=track.employee_probability,
                 customer_probability=track.customer_probability,
                 unknown_probability=track.unknown_probability,
                 group_probability=track.group_probability,
                 dwell_seconds=dwell_seconds,
-                zone_session_id=event_data.get("zone_session_id"),
+                zone_session_id=raw_zone_session_id,
                 has_dwell_flag=bool(event_data.get("has_dwell_flag", dwell_seconds > 0.0)),
                 window_start=self._window_start(event_timestamp),
                 window_end=self._window_end(event_timestamp),
@@ -220,23 +211,49 @@ class CameraPipeline:
                 max_dwell_bucket=self._dwell_bucket(dwell_seconds),
                 promo_zone_flag=zone_id in self._config.store.promo_zone_ids,
             )
-            self._event_hub.send(base_event)
+            if raw_event_type == "zone_exited":
+                self._event_hub.send(base_event)
 
-            if base_event.event_type == "door_crossed":
-                crossing = CrossingResult(zone_id=zone_id, direction=base_event.direction or "entering")
+            if raw_event_type == "door_crossed":
+                crossing = CrossingResult(zone_id=zone_id, direction=raw_direction or "entering")
                 ff_event = self._footfall.process_crossing(
+                    camera_store_id,
                     track,
                     crossing,
                     zone,
                     event_timestamp,
-                    zone_session_id=base_event.zone_session_id,
+                    zone_session_id=raw_zone_session_id,
                 )
                 if ff_event:
+                    if ff_event.event_type == "exit":
+                        track.mark_store_exit(ff_event.zone_id, event_timestamp)
+                        track.mark_pending_exit(event_timestamp, self._exit_confirmation_cooldown_seconds)
+                    elif ff_event.event_type == "entry":
+                        track.mark_store_entry(ff_event.zone_id, event_timestamp)
+                        track.clear_pending_exit()
                     self._event_hub.send(FootfallUpdate(
+                        event_id=self._make_event_id(
+                            event_type="footfall_updated",
+                            track=track,
+                            timestamp=event_timestamp,
+                            zone_session_id=raw_zone_session_id,
+                            zone_id=zone_id,
+                        ),
                         event_type="footfall_updated",
                         tenant_id=self._config.store.tenant_id,
-                        store_id=self._config.store.store_id,
+                        store_id=camera_store_id,
                         camera_id=self.camera_id,
+                        track_id=track.track_id,
+                        store_visit_session_id=track.store_visit_session_id,
+                        previous_group_id=track.previous_group_id,
+                        group_id=track.group_id,
+                        group_probability=track.group_probability,
+                        counting_event_type=ff_event.event_type,
+                        entry_delta=ff_event.entry_delta,
+                        exit_delta=ff_event.exit_delta,
+                        source_zone_id=ff_event.zone_id,
+                        source_direction=ff_event.direction,
+                        zone_session_id=ff_event.zone_session_id,
                         total_entries=ff_event.stats_snapshot.get("total_entries", 0),
                         total_exits=ff_event.stats_snapshot.get("total_exits", 0),
                         current_in_store=ff_event.stats_snapshot.get("current_in_store", 0),
@@ -245,8 +262,10 @@ class CameraPipeline:
                         timestamp=event_timestamp,
                     ))
 
+        self._emit_completed_sessions(ts)
+
         zones = self._zone_manager.get_zones_for_camera(self.camera_id)
-        stats = self._footfall.stats
+        stats = self._footfall.stats_for_store(camera_store_id)
         return self._overlay.render(frame, active_tracks, zones, stats)
 
     def _classify_and_publish(
@@ -260,36 +279,23 @@ class CameraPipeline:
         """Run CLIP classification in a background thread."""
         try:
             self._classifier.classify_tracks(tracks, frame, frame_id, context)
-            for payload in context["classification_events"]:
-                track = next((t for t in tracks if t.track_id == payload["track_id"]), None)
-                if track is None:
-                    continue
-                self._event_hub.send(BaseEvent(
-                    event_type="classification_updated",
-                    tenant_id=self._config.store.tenant_id,
-                    store_id=self._config.store.store_id,
-                    camera_id=self.camera_id,
-                    timestamp=ts,
-                    track_id=track.track_id,
-                    group_id=track.group_id,
-                    classification_label=payload["classification_label"],
-                    employee_probability=payload["employee_probability"],
-                    customer_probability=payload["customer_probability"],
-                    unknown_probability=payload["unknown_probability"],
-                    group_probability=track.group_probability,
-                    window_start=self._window_start(ts),
-                    window_end=self._window_end(ts),
-                ))
         except Exception:
             logger.exception("[%s] Background classification error", self.camera_id)
 
     def on_config_change(self, config: AppConfig) -> None:
         self._config = config
+        self._group_engine = GroupLikelihoodEngine(
+            threshold=0.5,
+            group_rejoin_grace_seconds=config.tracking.group_rejoin_grace_seconds,
+        )
+        self._exit_confirmation_cooldown_seconds = float(config.tracking.exit_confirmation_cooldown_seconds)
+        self._track_lost_timeout_seconds = float(config.tracking.track_lost_timeout_seconds)
 
     def _update_track_behavior_context(self, tracks: list[Track], timestamp: float, frame_id: int) -> None:
         pre_open_flag = self._pre_open_entry_flag(timestamp)
         first_n_entries_flag = 1.0 if frame_id < 300 else 0.0
         for track in tracks:
+            track.refresh_session_activity(timestamp)
             track.derived_features["pre_open_entry_flag"] = pre_open_flag
             track.derived_features["first_n_entries_flag"] = first_n_entries_flag
 
@@ -301,16 +307,27 @@ class CameraPipeline:
         window_start = open_minutes - 60
         return 1.0 if window_start <= now_minutes < open_minutes else 0.0
 
-    def _apply_group_assignments(self, tracks: list[Track]) -> None:
+    def _apply_group_assignments(self, tracks: list[Track], timestamp: float) -> None:
         assignments = self._group_engine.assign_groups(tracks)
         logged_groups: set[str] = set()
         for track in tracks:
+            previous_group_id = track.group_id
             assignment = assignments.get(track.track_id)
-            if assignment is None:
+            next_group_id = None if assignment is None else assignment["group_id"]
+            if assignment is None or next_group_id is None:
+                if track.group_id:
+                    track.remember_group_membership(timestamp)
+                track.record_group_transition(previous_group_id, None)
                 track.group_id = None
                 track.group_probability = 0.0
                 continue
-            track.group_id = assignment["group_id"]
+
+            if previous_group_id and previous_group_id != next_group_id:
+                track.previous_group_id = previous_group_id
+                track.last_group_seen_at = timestamp
+
+            track.record_group_transition(previous_group_id, next_group_id)
+            track.group_id = next_group_id
             track.group_probability = assignment["group_probability"]
             if assignment["signals"]:
                 track.derived_features["group_signals"] = assignment["signals"]
@@ -320,6 +337,103 @@ class CameraPipeline:
                     "[%s] Group detected: %s  prob=%.3f",
                     self.camera_id, track.group_id, track.group_probability,
                 )
+
+    def _emit_completed_sessions(self, timestamp: float) -> None:
+        for track in self._tracker.tracks.values():
+            if track.session_completed_emitted:
+                continue
+
+            completed_at: float | None = None
+            completion_reason: str | None = None
+            if (
+                track.pending_exit_at is not None
+                and track.last_exit_seen_at is not None
+                and timestamp >= track.pending_exit_at
+                and track.last_seen <= track.last_exit_seen_at
+            ):
+                completed_at = track.pending_exit_at
+                completion_reason = "exit_confirmed"
+            elif (not track.is_active) and (timestamp - track.last_seen >= self._track_lost_timeout_seconds):
+                completed_at = track.last_seen + self._track_lost_timeout_seconds
+                completion_reason = "track_lost_timeout"
+
+            if completed_at is None:
+                continue
+
+            track.mark_session_completed(completed_at)
+            self._event_hub.send(BaseEvent(
+                event_id=self._make_event_id(
+                    event_type="session_completed",
+                    track=track,
+                    timestamp=completed_at,
+                    suffix=track.store_visit_session_id,
+                ),
+                event_type="session_completed",
+                tenant_id=self._config.store.tenant_id,
+                store_id=self._camera_store_id(),
+                camera_id=self.camera_id,
+                timestamp=completed_at,
+                track_id=track.track_id,
+                store_visit_session_id=track.store_visit_session_id,
+                previous_group_id=track.previous_group_id,
+                group_id=track.group_id,
+                classification_label=track.label.value,
+                employee_probability=track.employee_probability,
+                customer_probability=track.customer_probability,
+                unknown_probability=track.unknown_probability,
+                group_probability=track.group_probability,
+                window_start=self._window_start(completed_at),
+                window_end=self._window_end(completed_at),
+                session_completed_at=completed_at,
+                session_duration_seconds=max(0.0, completed_at - track.store_visit_started_at),
+                total_dwell_seconds=track.total_dwell_seconds,
+                session_entry_count=track.entry_count,
+                session_exit_count=track.exit_count,
+                visited_zones=list(track.zones_visited),
+                session_completion_reason=completion_reason,
+                final_group_id=track.group_id,
+                group_lineage=list(track.group_lineage),
+                split_detected_flag=track.split_detected_flag,
+                regroup_detected_flag=track.regroup_detected_flag,
+                merge_detected_flag=track.merge_detected_flag,
+                entry_zone_id=track.store_entry_zone_id,
+                exit_zone_id=track.store_exit_zone_id,
+                entry_timestamp=track.store_entry_at,
+                exit_timestamp=track.store_exit_at,
+                zone_dwell_map=dict(track.zone_dwell_seconds),
+            ))
+
+    def _camera_store_id(self) -> str:
+        return next(
+            (
+                cam.store_id or self._config.store.store_id
+                for cam in self._config.cameras
+                if cam.id == self.camera_id
+            ),
+            self._config.store.store_id,
+        )
+
+    def _make_event_id(
+        self,
+        event_type: str,
+        track: Track,
+        timestamp: float,
+        zone_session_id: str | None = None,
+        zone_id: str | None = None,
+        suffix: str | None = None,
+    ) -> str:
+        raw = "|".join([
+            self.camera_id,
+            event_type,
+            str(track.track_id),
+            track.store_visit_session_id,
+            zone_id or "",
+            zone_session_id or "",
+            suffix or "",
+            f"{timestamp:.6f}",
+        ])
+        digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+        return f"evt-{digest[:20]}"
 
     def _window_start(self, timestamp: float) -> float:
         return timestamp - (timestamp % 300)
@@ -338,7 +452,7 @@ class CameraPipeline:
         if dwell_seconds < 30:
             return "<30s"
         if dwell_seconds < 60:
-            return "30–60s"
+            return "30-60s"
         if dwell_seconds < 120:
-            return "60–120s"
+            return "60-120s"
         return ">120s"

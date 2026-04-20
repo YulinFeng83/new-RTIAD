@@ -27,11 +27,14 @@ class ZoneResponse(BaseModel):
 class CameraResponse(BaseModel):
     id: str
     url: str
+    store_id: str
+    store_name: str
     scene_type: str
     zones: list[ZoneResponse]
 
 
 class FootfallStatsResponse(BaseModel):
+    store_id: str | None = None
     total_entries: int
     total_exits: int
     current_in_store: int

@@ -1,35 +1,79 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import CameraSetup from './pages/CameraSetup'
 import LiveFeed from './components/LiveFeed'
+import StoreOverview, { type StoreMetrics } from './components/StoreOverview'
+import StoreSelector from './components/StoreSelector'
+import { type StoreAlert } from './components/StoreAlerts'
+import { useStoreContext, type CameraInfo } from './store-context'
 import './index.css'
-
-interface CameraInfo {
-  id: string
-  url: string
-  scene_type: string
-  zones: any[]
-}
 
 type View = 'grid' | 'setup'
 
 function App() {
-  const [cameras, setCameras] = useState<CameraInfo[]>([])
   const [view, setView] = useState<View>('grid')
   const [setupCameraId, setSetupCameraId] = useState<string>('')
+  const {
+    filteredCameras,
+    filteredFootfall,
+    stores,
+    selectedStoreId,
+    selectedStoreName,
+    loading,
+    refreshData,
+    setSelectedStoreId,
+    getCameraById,
+  } = useStoreContext()
+
+  const storeAlerts = useMemo<StoreAlert[]>(() => {
+    const alerts: StoreAlert[] = []
+
+    if (filteredCameras.length === 0) {
+      alerts.push({
+        id: 'no-cameras',
+        title: 'No cameras in this store',
+        detail: 'This store currently has no camera configuration loaded into the dashboard.',
+      })
+    }
+
+    const camerasWithoutZones = filteredCameras.filter((camera) => camera.zones.length === 0)
+    if (camerasWithoutZones.length > 0) {
+      alerts.push({
+        id: 'missing-zones',
+        title: 'Cameras need zone setup',
+        detail: `${camerasWithoutZones.length} camera${camerasWithoutZones.length !== 1 ? 's' : ''} in this store still have no configured zones.`,
+      })
+    }
+
+    return alerts
+  }, [filteredCameras])
+
+  const dashboardMetrics = useMemo<StoreMetrics>(() => {
+    const zoneCount = filteredCameras.reduce((total, camera) => total + camera.zones.length, 0)
+    const indoorCount = filteredCameras.filter((camera) => camera.scene_type === 'indoor').length
+    const outdoorCount = filteredCameras.length - indoorCount
+
+    return {
+      cameras: filteredCameras.length,
+      zones: zoneCount,
+      occupancy: filteredFootfall?.current_in_store ?? null,
+      entries: filteredFootfall?.total_entries ?? null,
+      exits: filteredFootfall?.total_exits ?? null,
+      indoorCount,
+      outdoorCount,
+    }
+  }, [filteredCameras, filteredFootfall])
 
   useEffect(() => {
-    fetchCameras()
-  }, [])
-
-  const fetchCameras = async () => {
-    try {
-      const res = await fetch('/api/v1/cameras')
-      const data = await res.json()
-      setCameras(data)
-    } catch (err) {
-      console.error('Failed to fetch cameras:', err)
+    if (!setupCameraId) {
+      return
     }
-  }
+
+    const setupCamera = getCameraById(setupCameraId)
+    if (!setupCamera || setupCamera.store_id !== selectedStoreId) {
+      setSetupCameraId('')
+      setView('grid')
+    }
+  }, [getCameraById, selectedStoreId, setupCameraId])
 
   const openSetup = (camId: string) => {
     setSetupCameraId(camId)
@@ -39,8 +83,10 @@ function App() {
   const backToGrid = () => {
     setView('grid')
     setSetupCameraId('')
-    fetchCameras()
+    void refreshData()
   }
+
+  const selectedCamera = setupCameraId ? getCameraById(setupCameraId) : undefined
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -55,38 +101,47 @@ function App() {
                 onClick={backToGrid}
                 className="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded px-3 py-1.5 transition-colors"
               >
-                &larr; All Cameras
+                &larr; Store Dashboard
               </button>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">
-              {cameras.length} camera{cameras.length !== 1 ? 's' : ''}
-            </span>
-            <button
-              onClick={fetchCameras}
-              className="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded px-3 py-1.5 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
+          <StoreSelector
+            stores={stores}
+            selectedStoreId={selectedStoreId}
+            cameraCount={filteredCameras.length}
+            onChange={setSelectedStoreId}
+            onRefresh={() => void refreshData()}
+          />
         </div>
       </header>
 
       <main className="p-6">
-        {cameras.length === 0 ? (
+        {loading ? (
           <div className="text-center text-gray-500 mt-20">
-            <p className="text-lg">No cameras configured.</p>
+            <p className="text-lg">Loading store dashboard...</p>
+          </div>
+        ) : filteredCameras.length === 0 && view === 'grid' ? (
+          <div className="text-center text-gray-500 mt-20">
+            <p className="text-lg">No cameras configured for {selectedStoreName}.</p>
             <p className="text-sm mt-2">
               Add cameras in <code className="text-blue-400">config/default_config.yaml</code> and restart the backend.
             </p>
           </div>
         ) : view === 'grid' ? (
-          <MultiCameraGrid cameras={cameras} onSelectCamera={openSetup} />
+          <div className="space-y-6">
+            <StoreOverview
+              storeName={selectedStoreName}
+              metrics={dashboardMetrics}
+              alerts={storeAlerts}
+              hasScopedFootfall={filteredFootfall !== null}
+            />
+            <MultiCameraGrid cameras={filteredCameras} onSelectCamera={openSetup} />
+          </div>
         ) : (
           <CameraSetup
-            cameraId={setupCameraId}
-            onZoneChange={fetchCameras}
+            camera={selectedCamera}
+            storeName={selectedStoreName}
+            onZoneChange={refreshData}
           />
         )}
       </main>

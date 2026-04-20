@@ -20,9 +20,13 @@ async def list_cameras():
     cameras = []
     for cam in config.cameras:
         zones = app_state.zone_manager.get_zones_for_camera(cam.id) if app_state.zone_manager else []
+        store_id = cam.store_id or config.store.store_id
+        store_name = cam.store_name or config.store.name
         cameras.append(CameraResponse(
             id=cam.id,
             url=cam.url,
+            store_id=store_id,
+            store_name=store_name,
             scene_type=cam.scene_type,
             zones=[
                 ZoneResponse(

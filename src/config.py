@@ -45,8 +45,11 @@ class ZoneConfig(BaseModel):
 class CameraConfig(BaseModel):
     id: str
     url: str = ""
+    store_id: str = ""
+    store_name: str = ""
     scene_type: str = "indoor"
     loop: bool = True
+    rotation_degrees: int = 0
     zones: list[ZoneConfig] = Field(default_factory=list)
 
 
@@ -59,6 +62,9 @@ class DetectionConfig(BaseModel):
 class TrackingConfig(BaseModel):
     tracker: str = "bytetrack"
     max_lost_frames: int = 30
+    group_rejoin_grace_seconds: int = 180
+    exit_confirmation_cooldown_seconds: int = 30
+    track_lost_timeout_seconds: int = 120
 
 
 class DressCodePrompts(BaseModel):
@@ -86,8 +92,8 @@ class EmployeeDetectionConfig(BaseModel):
 
 
 class StoreConfig(BaseModel):
-    tenant_id: str = "tenant_1"
-    store_id: str = "store_1"
+    tenant_id: str = "test-tenant"
+    store_id: str = "test-store"
     name: str = "Store Alpha"
     open_time: str = "09:00"
     close_time: str = "21:00"

@@ -45,4 +45,10 @@ async def camera_feed(camera_id: str):
     return StreamingResponse(
         _mjpeg_generator(camera_id),
         media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "X-Accel-Buffering": "no",
+        },
     )

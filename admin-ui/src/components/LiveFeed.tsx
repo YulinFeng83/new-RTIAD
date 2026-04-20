@@ -18,7 +18,8 @@ export default function LiveFeed({ cameraId, className = '', onLoad }: LiveFeedP
   const imgRef = useRef<HTMLImageElement>(null)
   const [error, setError] = useState(false)
 
-  const feedUrl = `/api/v1/cameras/${cameraId}/feed`
+  const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:8000`
+  const feedUrl = `${API_BASE}/api/v1/cameras/${cameraId}/feed`
 
   useEffect(() => {
     setError(false)
@@ -49,6 +50,7 @@ export default function LiveFeed({ cameraId, className = '', onLoad }: LiveFeedP
 
   return (
     <img
+      key={feedUrl}
       ref={imgRef}
       src={feedUrl}
       alt={`Live feed: ${cameraId}`}

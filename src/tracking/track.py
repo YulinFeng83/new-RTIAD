@@ -18,6 +18,9 @@ class PersonLabel(str, Enum):
     CUSTOMER = "customer"
 
 
+UNGROUPED_LINEAGE_TOKEN = "ungrouped"
+
+
 @dataclass
 class TrackPoint:
     bbox: tuple[int, int, int, int]      # x1, y1, x2, y2
@@ -41,6 +44,12 @@ class Track:
     first_seen: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
     is_active: bool = True
+    store_visit_session_id: str = ""
+    store_visit_started_at: float = 0.0
+    session_completed_emitted: bool = False
+    session_completed_at: float | None = None
+    pending_exit_at: float | None = None
+    last_exit_seen_at: float | None = None
 
     _last_classified_frame: int = 0
     entry_count: int = 0
@@ -56,7 +65,18 @@ class Track:
     unknown_probability: float = 1.0
 
     group_id: str | None = None
+    previous_group_id: str | None = None
+    last_group_seen_at: float | None = None
     group_probability: float = 0.0
+    group_lineage: list[str] = field(default_factory=list)
+    split_detected_flag: bool = False
+    regroup_detected_flag: bool = False
+    merge_detected_flag: bool = False
+
+    store_entry_zone_id: str | None = None
+    store_exit_zone_id: str | None = None
+    store_entry_at: float | None = None
+    store_exit_at: float | None = None
 
     clip_signals: dict[str, float] = field(default_factory=dict)
     derived_features: dict[str, float] = field(default_factory=dict)
@@ -64,6 +84,12 @@ class Track:
 
     counted_entry: bool = False
     counted_exit: bool = False
+
+    def __post_init__(self) -> None:
+        if self.store_visit_started_at <= 0.0:
+            self.store_visit_started_at = self.first_seen
+        if not self.store_visit_session_id:
+            self.store_visit_session_id = self._make_store_visit_session_id(self.store_visit_started_at)
 
     @property
     def current_bbox(self) -> Optional[tuple[int, int, int, int]]:
@@ -80,6 +106,10 @@ class Track:
     @property
     def session_duration_seconds(self) -> float:
         return max(0.0, self.last_seen - self.first_seen)
+
+    @property
+    def store_visit_duration_seconds(self) -> float:
+        return max(0.0, self.last_seen - self.store_visit_started_at)
 
     @property
     def total_dwell_seconds(self) -> float:
@@ -108,6 +138,77 @@ class Track:
         self.history.append(TrackPoint(bbox=bbox, centroid=(cx, cy), timestamp=ts, frame_id=frame_id))
         self.last_seen = ts
 
+    def remember_group_membership(self, timestamp: Optional[float] = None) -> None:
+        if not self.group_id:
+            return
+        ts = timestamp or self.last_seen or time.time()
+        self.previous_group_id = self.group_id
+        self.last_group_seen_at = ts
+
+    def record_group_transition(
+        self,
+        previous_group_id: str | None,
+        new_group_id: str | None,
+    ) -> None:
+        if previous_group_id == new_group_id:
+            return
+
+        if previous_group_id and (not self.group_lineage or self.group_lineage[-1] != previous_group_id):
+            self.group_lineage.append(previous_group_id)
+
+        if previous_group_id and new_group_id is None:
+            self.split_detected_flag = True
+            if not self.group_lineage or self.group_lineage[-1] != UNGROUPED_LINEAGE_TOKEN:
+                self.group_lineage.append(UNGROUPED_LINEAGE_TOKEN)
+            return
+
+        if new_group_id is None:
+            return
+
+        if previous_group_id is None:
+            if self.previous_group_id == new_group_id or new_group_id in self.group_lineage:
+                self.regroup_detected_flag = True
+        elif previous_group_id != new_group_id:
+            self.merge_detected_flag = True
+            if new_group_id in self.group_lineage:
+                self.regroup_detected_flag = True
+
+        if not self.group_lineage or self.group_lineage[-1] != new_group_id:
+            self.group_lineage.append(new_group_id)
+
+    def clear_pending_exit(self) -> None:
+        self.pending_exit_at = None
+        self.last_exit_seen_at = None
+
+    def mark_pending_exit(self, timestamp: float, cooldown_seconds: float) -> None:
+        self.pending_exit_at = timestamp + cooldown_seconds
+        self.last_exit_seen_at = timestamp
+
+    def mark_session_completed(self, timestamp: float) -> None:
+        self.session_completed_emitted = True
+        self.session_completed_at = timestamp
+        self.clear_pending_exit()
+
+    def refresh_session_activity(self, timestamp: Optional[float] = None) -> None:
+        if self.last_exit_seen_at is None or self.session_completed_emitted:
+            return
+        ts = timestamp or self.last_seen
+        if ts > self.last_exit_seen_at:
+            self.clear_pending_exit()
+
+    def _make_store_visit_session_id(self, timestamp: float) -> str:
+        return f"sess-{self.track_id}-{int(timestamp * 1000)}"
+
+    def mark_store_entry(self, zone_id: str, timestamp: float) -> None:
+        if self.store_entry_zone_id is None:
+            self.store_entry_zone_id = zone_id
+        if self.store_entry_at is None:
+            self.store_entry_at = timestamp
+
+    def mark_store_exit(self, zone_id: str, timestamp: float) -> None:
+        self.store_exit_zone_id = zone_id
+        self.store_exit_at = timestamp
+
     def mark_zone_entered(self, zone_id: str, timestamp: float) -> None:
         self.zone_entry_times[zone_id] = timestamp
         if zone_id not in self.zones_visited:
@@ -127,7 +228,7 @@ class Track:
         self.zone_visit_counts[zone_id] = visit_count
         self.entry_count += 1
         self.mark_zone_entered(zone_id, ts)
-        session_id = f"{self.camera_id}:{self.track_id}:{zone_id}:{visit_count}"
+        session_id = f"zsess-{zone_id}-{visit_count:03d}"
         self.active_zone_session_ids[zone_id] = session_id
         return session_id
 

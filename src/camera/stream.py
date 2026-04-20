@@ -38,6 +38,7 @@ class VideoStream:
         camera_id: str = "cam",
         target_fps: int = 15,
         loop: bool = True,
+        rotation_degrees: int = 0,
         max_queue_size: int = 1500,
         reconnect_delay: float = 5.0,
     ):
@@ -46,15 +47,19 @@ class VideoStream:
         self._target_fps = target_fps
         self._loop = loop
         self._reconnect_delay = reconnect_delay
+        self._rotation_degrees = rotation_degrees % 360
 
         self._source_type = self._detect_source_type(source)
+        queue_size = max_queue_size
+        if self._source_type in {"rtsp", "webcam"}:
+            queue_size = min(max_queue_size, 4)
         self._cap: Optional[cv2.VideoCapture] = None
         self._frame: Optional[np.ndarray] = None
         self._frame_id: int = 0
         self._lock = threading.Lock()
         self._running = False
         self._thread: Optional[threading.Thread] = None
-        self._frame_queue: _queue_mod.Queue = _queue_mod.Queue(maxsize=max_queue_size)
+        self._frame_queue: _queue_mod.Queue = _queue_mod.Queue(maxsize=queue_size)
 
         self._native_fps: float = 0.0
         self._frame_width: int = 0
@@ -93,13 +98,29 @@ class VideoStream:
             return True, self._frame.copy(), self._frame_id
 
     def read_queued(self) -> tuple[bool, Optional[np.ndarray], int]:
-        """Return the next buffered frame (blocking). No frames are dropped."""
+        """Return the next buffered frame.
+
+        File sources preserve queued order to simulate real-time playback. Live
+        RTSP and webcam sources drain intermediate frames and return the newest
+        available frame to keep end-to-end latency bounded.
+        """
         try:
             item = self._frame_queue.get(timeout=2.0)
         except _queue_mod.Empty:
             return False, None, -1
         if item is None:
             return False, None, -1
+
+        if self._source_type in {"rtsp", "webcam"}:
+            while True:
+                try:
+                    next_item = self._frame_queue.get_nowait()
+                except _queue_mod.Empty:
+                    break
+                if next_item is None:
+                    return False, None, -1
+                item = next_item
+
         return True, item[0], item[1]
 
     @property
@@ -193,6 +214,8 @@ class VideoStream:
                     time.sleep(self._reconnect_delay)
                     continue
 
+            frame = self._rotate_frame(frame)
+
             with self._lock:
                 self._frame = frame
                 self._frame_id += 1
@@ -201,7 +224,21 @@ class VideoStream:
             try:
                 self._frame_queue.put((frame, fid), timeout=2.0)
             except _queue_mod.Full:
-                pass
+                if self._source_type in {"rtsp", "webcam"}:
+                    try:
+                        self._frame_queue.get_nowait()
+                        self._frame_queue.put_nowait((frame, fid))
+                    except (_queue_mod.Empty, _queue_mod.Full):
+                        pass
 
             if self._source_type == "file":
                 time.sleep(frame_interval)
+
+    def _rotate_frame(self, frame: np.ndarray) -> np.ndarray:
+        if self._rotation_degrees == 90:
+            return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        if self._rotation_degrees == 180:
+            return cv2.rotate(frame, cv2.ROTATE_180)
+        if self._rotation_degrees == 270:
+            return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        return frame
