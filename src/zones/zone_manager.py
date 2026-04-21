@@ -39,6 +39,7 @@ class ZoneManager:
             camera_id=camera_id,
             polygon=polygon,
             zone_type=ZoneType(z_cfg.type),
+            business_zone_type=z_cfg.business_zone_type,
             direction_vector=direction,
             name=z_cfg.name,
             promo_zone_flag=z_cfg.promo_zone_flag,
@@ -134,18 +135,22 @@ class ZoneManager:
                     )))
                 else:
                     had_dwell = state_key in self._dwell_started
+                    entered_at = track.zone_entry_times.get(zone.zone_id)
                     zone_session_id, dwell_seconds = track.end_zone_session(zone.zone_id, timestamp)
                     self._dwell_started.discard(state_key)
-                    results.append((track, self._event_payload(
-                        event_type="zone_exited",
-                        zone=zone,
-                        timestamp=timestamp,
-                        direction=crossing.direction,
-                        zone_session_id=zone_session_id,
-                        dwell_seconds=dwell_seconds,
-                        has_dwell_flag=dwell_seconds > 0.0,
-                        zone_visitors=zone_visitors,
-                    )))
+                    # Suppress noisy short exits: only emit zone_exited if dwell >= 2.0s
+                    if dwell_seconds >= 2.0:
+                        results.append((track, self._event_payload(
+                            event_type="zone_exited",
+                            zone=zone,
+                            timestamp=timestamp,
+                            direction=crossing.direction,
+                            zone_session_id=zone_session_id,
+                            dwell_seconds=dwell_seconds,
+                            has_dwell_flag=dwell_seconds > 0.0,
+                            zone_visitors=zone_visitors,
+                            entered_at=entered_at,
+                        )))
                     if had_dwell and zone_session_id is not None:
                         results.append((track, self._event_payload(
                             event_type="dwell_ended",
@@ -210,8 +215,9 @@ class ZoneManager:
         zone_visitors: int,
         dwell_seconds: float = 0.0,
         has_dwell_flag: bool = False,
+        entered_at: float | None = None,
     ) -> dict[str, Any]:
-        return {
+        payload = {
             "event_type": event_type,
             "zone_id": zone.zone_id,
             "timestamp": timestamp,
@@ -221,6 +227,9 @@ class ZoneManager:
             "has_dwell_flag": has_dwell_flag,
             "zone_visitors": zone_visitors,
         }
+        if entered_at is not None:
+            payload["entered_at"] = entered_at
+        return payload
 
     def _count_zone_visitors(self, tracks: list[Track], zone: Zone) -> int:
         count = 0
@@ -235,12 +244,20 @@ class ZoneManager:
         staff_zone_ids = {
             zone_id
             for zone_id, zone_obj in self._zones.items()
-            if zone_obj.zone_type == ZoneType.STAFF_ONLY or "staff" in f"{zone_id} {zone_obj.name}".lower()
+            if (
+                zone_obj.zone_type == ZoneType.STAFF_ONLY
+                or zone_obj.business_zone_type in {"staff", "back_of_house"}
+                or "staff" in f"{zone_id} {zone_obj.name}".lower()
+            )
         }
         counter_zone_ids = {
             zone_id
             for zone_id, zone_obj in self._zones.items()
-            if "counter" in f"{zone_id} {zone_obj.name}".lower() or "checkout" in f"{zone_id} {zone_obj.name}".lower()
+            if (
+                zone_obj.business_zone_type in {"counter", "checkout", "service_counter"}
+                or "counter" in f"{zone_id} {zone_obj.name}".lower()
+                or "checkout" in f"{zone_id} {zone_obj.name}".lower()
+            )
         }
         staff_visits = float(sum(track.zone_visit_counts.get(zone_id, 0) for zone_id in staff_zone_ids))
         counter_visits = float(sum(track.zone_visit_counts.get(zone_id, 0) for zone_id in counter_zone_ids))

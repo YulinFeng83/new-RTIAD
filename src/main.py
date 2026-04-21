@@ -25,7 +25,12 @@ from src.counting.footfall_counter import FootfallCounter
 from src.events.event_hub import EventHubProducer
 from src.models.employee_classifier import EmployeeClassifier
 from src.pipeline import CameraPipeline
+from src.position.floor_position_sampler import FloorPositionSampler
+from src.position.homography_mapper import HomographyFloorCoordinateMapper
+from src.reid.appearance_embedder import OSNetAppearanceEmbedder
 from src.rendering.overlay import OverlayRenderer
+from src.sessions.visit_session_manager import VisitSessionManager
+from src.stitching.cross_camera_stitcher import CrossCameraStitcher
 from src.tracking.tracker import PersonTracker
 from src.zones.zone_manager import ZoneManager
 
@@ -62,6 +67,35 @@ def main(config_path: str | None = None) -> None:
 
     # --- Footfall counter ---
     footfall = FootfallCounter()
+
+    # --- Store visit sessions ---
+    visit_sessions = VisitSessionManager(
+        exit_confirmation_cooldown_seconds=float(cfg.tracking.exit_confirmation_cooldown_seconds)
+    )
+
+    # --- Cross-camera stitching ---
+    stitcher = CrossCameraStitcher(
+        spatial_config=cfg.spatial,
+        visit_session_manager=visit_sessions,
+        temporal_gate_seconds=float(cfg.reid.temporal_gate_seconds),
+        appearance_threshold=float(cfg.reid.appearance_similarity_threshold),
+        min_score=float(cfg.reid.min_stitch_score),
+        ambiguity_margin=float(cfg.reid.ambiguity_margin),
+    )
+
+    # --- OSNet appearance embeddings for cross-camera stitching ---
+    appearance_embedder = OSNetAppearanceEmbedder(
+        config=cfg.reid,
+        device=cfg.system.device,
+    )
+    appearance_embedder.load()
+
+    # --- Stage 2 calibrated image->floor mapping ---
+    floor_coordinate_mapper = HomographyFloorCoordinateMapper(cfg.spatial)
+    floor_position_sampler = FloorPositionSampler(
+        mapper=floor_coordinate_mapper,
+        movement_threshold=0.5,
+    )
 
     # --- Event Hub ---
     event_hub = EventHubProducer(cfg.event_hub)
@@ -103,6 +137,11 @@ def main(config_path: str | None = None) -> None:
             footfall_counter=footfall,
             overlay_renderer=overlay,
             event_hub=event_hub,
+            visit_session_manager=visit_sessions,
+            cross_camera_stitcher=stitcher,
+            appearance_embedder=appearance_embedder,
+            floor_coordinate_mapper=floor_coordinate_mapper,
+            floor_position_sampler=floor_position_sampler,
             config=cfg,
         )
         pipelines[cam_cfg.id] = pipeline
@@ -113,6 +152,7 @@ def main(config_path: str | None = None) -> None:
     app_state.camera_manager = camera_mgr
     app_state.zone_manager = zone_mgr
     app_state.footfall_counter = footfall
+    app_state.floor_coordinate_mapper = floor_coordinate_mapper
     app_state.pipelines = pipelines
 
     # --- Hot-reload callbacks ---
@@ -120,6 +160,16 @@ def main(config_path: str | None = None) -> None:
     config_mgr.on_change(lambda c: overlay.on_config_change(c.overlay))
     config_mgr.on_change(lambda c: classifier.on_config_change(c.employee_detection))
     config_mgr.on_change(lambda c: event_hub.on_config_change(c.event_hub))
+    config_mgr.on_change(lambda c: visit_sessions.on_config_change(float(c.tracking.exit_confirmation_cooldown_seconds)))
+    config_mgr.on_change(lambda c: stitcher.on_config_change(c.spatial))
+    config_mgr.on_change(lambda c: floor_coordinate_mapper.on_config_change(c.spatial))
+    config_mgr.on_change(lambda c: stitcher.on_reid_settings_change(
+        temporal_gate_seconds=float(c.reid.temporal_gate_seconds),
+        appearance_threshold=float(c.reid.appearance_similarity_threshold),
+        min_score=float(c.reid.min_stitch_score),
+        ambiguity_margin=float(c.reid.ambiguity_margin),
+    ))
+    config_mgr.on_change(lambda c: appearance_embedder.on_config_change(c.reid))
     config_mgr.on_change(lambda c: camera_mgr.on_config_change(c))
     config_mgr.start_watching()
 

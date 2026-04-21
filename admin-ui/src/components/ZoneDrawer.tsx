@@ -21,9 +21,11 @@ interface ZoneData {
   id: string
   camera_id: string
   type: string
+  business_zone_type?: string
   polygon: number[][]
   direction: number[]
   name: string
+  promo_zone_flag?: boolean
 }
 
 interface ZoneDrawerProps {
@@ -56,6 +58,21 @@ const ZONE_TYPE_LABELS: Record<string, string> = {
   staff_only: 'Restricted / Staff Only',
 }
 
+const BUSINESS_ZONE_TYPES = [
+  { value: 'aisle', label: 'Aisle' },
+  { value: 'counter', label: 'Counter' },
+  { value: 'checkout', label: 'Checkout' },
+  { value: 'entrance', label: 'Entrance' },
+  { value: 'promo', label: 'Promo Area' },
+  { value: 'service_counter', label: 'Service Counter' },
+  { value: 'staff', label: 'Staff Area' },
+  { value: 'back_of_house', label: 'Back of House' },
+]
+
+const BUSINESS_ZONE_LABELS = Object.fromEntries(
+  BUSINESS_ZONE_TYPES.map((item) => [item.value, item.label])
+)
+
 type DrawPhase = 'drawing' | 'set_direction' | 'ready'
 
 export default function ZoneDrawer({
@@ -69,7 +86,9 @@ export default function ZoneDrawer({
   const [points, setPoints] = useState<Point[]>([])
   const [phase, setPhase] = useState<DrawPhase>('drawing')
   const [zoneType, setZoneType] = useState<string>('bidirectional')
+  const [businessZoneType, setBusinessZoneType] = useState<string>('aisle')
   const [zoneName, setZoneName] = useState('')
+  const [promoZoneFlag, setPromoZoneFlag] = useState(false)
   const [mousePos, setMousePos] = useState<Point | null>(null)
   const [direction, setDirection] = useState<[number, number]>([0, -1])
 
@@ -259,9 +278,11 @@ export default function ZoneDrawer({
     const payload = {
       id: zoneId,
       type: zoneType,
+      business_zone_type: businessZoneType,
       polygon: points.map((p) => [p.x, p.y]),
       direction: direction,
       name: zoneName || zoneId,
+      promo_zone_flag: promoZoneFlag || businessZoneType === 'promo',
     }
 
     try {
@@ -296,6 +317,8 @@ export default function ZoneDrawer({
     setPoints([])
     setPhase('drawing')
     setZoneName('')
+    setBusinessZoneType('aisle')
+    setPromoZoneFlag(false)
     setDirection([0, -1])
   }
 
@@ -329,6 +352,7 @@ export default function ZoneDrawer({
           value={zoneType}
           onChange={(e) => setZoneType(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm"
+          title="Runtime crossing behavior"
         >
           <option value="entry">Entry</option>
           <option value="exit">Exit</option>
@@ -336,13 +360,36 @@ export default function ZoneDrawer({
           <option value="staff_only">Restricted / Staff Only</option>
         </select>
 
+        <select
+          value={businessZoneType}
+          onChange={(e) => setBusinessZoneType(e.target.value)}
+          className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm"
+          title="Business layout zone"
+        >
+          {BUSINESS_ZONE_TYPES.map((zone) => (
+            <option key={zone.value} value={zone.value}>
+              {zone.label}
+            </option>
+          ))}
+        </select>
+
         <input
           type="text"
-          placeholder="Zone name"
+          placeholder="Zone name, e.g. Cereal aisle"
           value={zoneName}
           onChange={(e) => setZoneName(e.target.value)}
           className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm w-40"
         />
+
+        <label className="flex items-center gap-2 text-sm text-gray-300">
+          <input
+            type="checkbox"
+            checked={promoZoneFlag}
+            onChange={(e) => setPromoZoneFlag(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-700 bg-gray-800"
+          />
+          Promo zone
+        </label>
 
         <button
           onClick={handleSave}
@@ -376,6 +423,10 @@ export default function ZoneDrawer({
                   />
                   <span className="text-sm">{zone.name || zone.id}</span>
                   <span className="text-xs text-gray-500">{ZONE_TYPE_LABELS[zone.type] || zone.type}</span>
+                  <span className="text-xs text-teal-300">
+                    {BUSINESS_ZONE_LABELS[zone.business_zone_type || 'aisle'] || zone.business_zone_type || 'Aisle'}
+                  </span>
+                  {zone.promo_zone_flag && <span className="text-xs text-yellow-300">Promo</span>}
                 </div>
                 <button
                   onClick={() => handleDeleteZone(zone.id)}

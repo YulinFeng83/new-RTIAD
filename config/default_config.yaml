@@ -7,33 +7,106 @@ system:
   max_duration_seconds: 60
 cameras:
 - id: cam-01
-  url: rtsp://admin:Royalcyber26@192.168.7.40:10554/tcp/av0_0
+  url: test data/Supermarket_Entrance_Group_Entry.mp4
   store_id: test-store
   store_name: Store Alpha
   scene_type: indoor
   loop: false
-  rotation_degrees: 180
+  rotation_degrees: 0
   zones:
-  - id: zone_1776284758330
+  - id: zone_1776715610104
     type: bidirectional
+    business_zone_type: aisle
     polygon:
-    - - 1920
-      - 1200
-    - - 1887
-      - 327
-    - - 1120
-      - 369
-    - - 1135
-      - 1100
-    - - 1918
-      - 1181
-    - - 1918
-      - 1181
+    - - 632
+      - 78
+    - - 442
+      - 50
+    - - 434
+      - 584
+    - - 727
+      - 568
+    - - 732
+      - 39
+    - - 630
+      - 76
+    - - 630
+      - 76
     direction:
-    - 0.6816843929866371
-    - 0.7316463547086393
-    name: zone_1776284758330
+    - 0.191289314723605
+    - -0.9815336968604661
+    name: entrancee
     promo_zone_flag: false
+- id: cam-02
+  url: test data/Family_Enters_Supermarket_CCTV.mp4
+  store_id: test-store
+  store_name: Store Alpha
+  scene_type: indoor
+  loop: false
+  rotation_degrees: 0
+  zones:
+  - id: zone_1776741683903
+    type: bidirectional
+    business_zone_type: aisle
+    polygon:
+    - - 676
+      - 318
+    - - 555
+      - 143
+    - - 741
+      - 143
+    - - 550
+      - 387
+    - - 556
+      - 145
+    - - 550
+      - 400
+    - - 739
+      - 401
+    - - 740
+      - 145
+    - - 740
+      - 145
+    - - 740
+      - 145
+    direction:
+    - 0.9971825622719712
+    - -0.07501291555929786
+    name: zone_1776741683903
+    promo_zone_flag: true
+- id: cam-03
+  url: test data/Family_Shopping_Trip_CCTV_Footage.mp4
+  store_id: test-store
+  store_name: Store Alpha
+  scene_type: indoor
+  loop: false
+  rotation_degrees: 0
+  zones:
+  - id: zone_1776729484373
+    type: staff_only
+    business_zone_type: aisle
+    polygon:
+    - - 598
+      - 346
+    - - 497
+      - 222
+    - - 648
+      - 222
+    - - 652
+      - 491
+    - - 521
+      - 490
+    - - 498
+      - 224
+    - - 498
+      - 228
+    - - 500
+      - 229
+    direction:
+    - 0.8245133526438033
+    - -0.5658424969124141
+    name: snack
+    promo_zone_flag: true
 detection:
   model: yolov8s.pt
   confidence: 0.25
@@ -73,6 +146,14 @@ employee_detection:
       - person wearing a black coat or dark suit
     pre_open_window_minutes: 60
     max_first_arrivals: 20
+reid:
+  enabled: true
+  model: osnet_x1_0
+  model_path: ''
+  appearance_similarity_threshold: 0.78
+  min_stitch_score: 0.8
+  ambiguity_margin: 0.08
+  temporal_gate_seconds: 30.0
 store:
   tenant_id: test-tenant
   store_id: test-store
@@ -81,8 +162,191 @@ store:
   close_time: '21:00'
   promo_zone_ids:
   - zone-a
+spatial:
+  floor_plan:
+    canvas_width: 1200
+    canvas_height: 800
+    store_width_meters: 10000.0
+    store_height_meters: 12000.0
+    scale_meters_per_pixel: 8.333333333333334
+    origin: bottom_left
+  camera_arrangement:
+  - camera_id: cam-01
+    canvas_x: 390.8273855257395
+    canvas_y: 469.3565117450307
+    canvas_width: 349.0844282922852
+    canvas_height: 212.2128902164174
+    floor_x: 4711.413330599017
+    floor_y: 1871.1420262230056
+    position: ''
+    coverage_area: indoor
+    rotation_degrees: 0.0
+    opacity: 0.75
+    z_index: 0
+    source_frame_width: 1280
+    source_frame_height: 720
+  - camera_id: cam-02
+    canvas_x: 729.6050332099742
+    canvas_y: 260.20703727739
+    canvas_width: 326.9242717201005
+    canvas_height: 202.0105053432349
+    floor_x: 7442.22640891687
+    floor_y: 3656.5642504249386
+    position: ''
+    coverage_area: indoor
+    rotation_degrees: 0.0
+    opacity: 0.75
+    z_index: 0
+    source_frame_width: 1280
+    source_frame_height: 720
+  - camera_id: cam-03
+    canvas_x: 394.8771348851041
+    canvas_y: 260.6456325722521
+    canvas_width: 334.34306731590016
+    canvas_height: 208.50209003124434
+    floor_x: 4683.738904525452
+    floor_y: 3625.8610201010483
+    position: ''
+    coverage_area: indoor
+    rotation_degrees: 0.0
+    opacity: 0.75
+    z_index: 0
+    source_frame_width: 1280
+    source_frame_height: 720
+  camera_adjacency:
+  - camera_a_id: cam-01
+    camera_b_id: cam-02
+    edge_a: right
+    edge_b: left
+    distance_pixels: 391.5214492953847
+    distance_meters: 3262.678744128206
+  - camera_a_id: cam-01
+    camera_b_id: cam-03
+    edge_a: top
+    edge_b: bottom
+    distance_pixels: 210.59246555188565
+    distance_meters: 1754.9372129323806
+  - camera_a_id: cam-02
+    camera_b_id: cam-03
+    edge_a: left
+    edge_b: right
+    distance_pixels: 331.0390043535614
+    distance_meters: 2758.658369613012
+  camera_overlaps:
+  - camera_a_id: cam-01
+    camera_b_id: cam-02
+    confirmed_overlap: true
+    primary_camera_id: cam-01
+  floor_zones:
+  - id: manual_zone_1776741712815
+    zone_name: Zone 1
+    zone_type: aisle
+    source_mode: manual
+    promo_zone_flag: false
+    map_x: 528.0
+    map_y: 360.0
+    map_width: 144.0
+    map_height: 80.0
+    source_camera_id: null
+    source_zone_id: null
+    map_polygon:
+    - - 528.0
+      - 360.0
+    - - 672.0
+      - 360.0
+    - - 672.0
+      - 440.0
+    - - 528.0
+      - 440.0
+  - id: floor_zone_cam-01_zone_1776715610104
+    zone_name: entrancee
+    zone_type: aisle
+    source_mode: projected
+    promo_zone_flag: false
+    map_x: 509.1888244935924
+    map_y: 480.8513766317533
+    map_width: 81.27121846179762
+    map_height: 160.63336828881597
+    source_camera_id: cam-01
+    source_zone_id: zone_1776715610104
+    map_polygon:
+    - - 563.1878219950553
+      - 492.34624151847584
+    - - 511.37060217041915
+      - 484.0935180100596
+    - - 509.1888244935924
+      - 641.4847449205693
+    - - 589.0964319073732
+      - 636.7689029157599
+    - - 590.46004295539
+      - 480.8513766317533
+    - - 562.6423775758485
+      - 491.7567612678747
+    - - 562.6423775758485
+      - 491.7567612678747
+  - id: floor_zone_cam-02_zone_1776741683903
+    zone_name: zone_1776741683903
+    zone_type: aisle
+    source_mode: projected
+    promo_zone_flag: true
+    map_x: 870.0803062147048
+    map_y: 300.3285681997269
+    map_width: 48.78323117073376
+    map_height: 72.38709774799253
+    source_camera_id: cam-02
+    source_zone_id: zone_1776741683903
+    map_polygon:
+    - - 902.2619142121522
+      - 349.4283438039854
+    - - 871.3573541511115
+      - 300.3285681997269
+    - - 918.8635373854386
+      - 300.3285681997269
+    - - 870.0803062147048
+      - 368.78768389937875
+    - - 871.6127637383928
+      - 300.889708492347
+    - - 870.0803062147048
+      - 372.4350958014094
+    - - 918.352718210876
+      - 372.7156659477194
+    - - 918.6081277981573
+      - 300.889708492347
+    - - 918.6081277981573
+      - 300.889708492347
+    - - 918.6081277981573
+      - 300.889708492347
+  - id: floor_zone_cam-03_zone_1776729484373
+    zone_name: snack
+    zone_type: aisle
+    source_mode: projected
+    promo_zone_flag: true
+    map_x: 524.6962789913559
+    map_y: 324.9337769985524
+    map_width: 40.48685580778488
+    map_height: 77.89869752556217
+    source_camera_id: cam-03
+    source_zone_id: zone_1776729484373
+    map_polygon:
+    - - 551.0780366467512
+      - 360.84247028171114
+    - - 524.6962789913559
+      - 324.9337769985524
+    - - 564.1383127137785
+      - 324.9337769985524
+    - - 565.1831347991408
+      - 402.83247452411456
+    - - 530.9652115035291
+      - 402.54288828796007
+    - - 524.9574845126965
+      - 325.51294947086143
+    - - 524.9574845126965
+      - 326.67129441547945
+    - - 525.4798955553777
+      - 326.96088065163394
+  camera_calibrations: []
 event_hub:
-  enabled: true
+  enabled: false
   connection_string: Endpoint=sb://esehchvlxmh8own93winbv.servicebus.windows.net/;SharedAccessKeyName=key_cd63018b-9b01-4294-9f83-28d43a218827;SharedAccessKey=3ZRlDx4O6J5GtSQ6NSZWv1EUaOM7YMQcA+AEhBwsSks=;EntityPath=es_a9ee9937-04bc-4c97-896d-227e60eb7695
   event_hub_name: es_a9ee9937-04bc-4c97-896d-227e60eb7695
   batch_size: 10

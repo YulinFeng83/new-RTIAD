@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import cameras, config, footfall, video_feed
+from src.api.routes import calibration, cameras, config, footfall, layout, video_feed
 
 
 @asynccontextmanager
@@ -34,8 +34,10 @@ def create_app() -> FastAPI:
 
     app.include_router(video_feed.router, prefix="/api/v1", tags=["video"])
     app.include_router(cameras.router, prefix="/api/v1", tags=["cameras"])
+    app.include_router(calibration.router, prefix="/api/v1", tags=["calibration"])
     app.include_router(config.router, prefix="/api/v1", tags=["config"])
     app.include_router(footfall.router, prefix="/api/v1", tags=["footfall"])
+    app.include_router(layout.router, prefix="/api/v1", tags=["layout"])
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:
@@ -48,6 +50,8 @@ def create_app() -> FastAPI:
             "feed": "/api/v1/cameras/{camera_id}/feed",
             "footfall": "/api/v1/footfall/current",
             "config": "/api/v1/config",
+            "layout": "/api/v1/stores/{store_id}/layout",
+            "calibration": "/api/v1/cameras/{camera_id}/calibration",
         }
 
     return app

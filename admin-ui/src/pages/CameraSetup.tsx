@@ -6,7 +6,7 @@
  * of the feed so operators can draw polygon zones.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ZoneDrawer from '../components/ZoneDrawer'
 import type { CameraInfo, ZoneInfo } from '../store-context'
 
@@ -14,9 +14,17 @@ interface CameraSetupProps {
   camera?: CameraInfo
   storeName: string
   onZoneChange: () => Promise<void>
+  embedded?: boolean
+  onClose?: () => void
 }
 
-export default function CameraSetup({ camera, storeName, onZoneChange }: CameraSetupProps) {
+export default function CameraSetup({
+  camera,
+  storeName,
+  onZoneChange,
+  embedded = false,
+  onClose,
+}: CameraSetupProps) {
   const [feedDimensions, setFeedDimensions] = useState({ width: 0, height: 0 })
   const [drawMode, setDrawMode] = useState(false)
   const [feedError, setFeedError] = useState(false)
@@ -57,6 +65,11 @@ export default function CameraSetup({ camera, storeName, onZoneChange }: CameraS
     return zoneType
   }
 
+  const businessZoneLabel = (zoneType?: string) => {
+    if (!zoneType) return 'aisle'
+    return zoneType.replace(/_/g, ' ')
+  }
+
   if (!camera) {
     return (
       <div className="rounded-lg border border-gray-800 bg-gray-900 p-6 text-sm text-gray-400">
@@ -69,21 +82,31 @@ export default function CameraSetup({ camera, storeName, onZoneChange }: CameraS
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">{storeName}</p>
-          <h2 className="mt-2 text-lg font-semibold flex items-center gap-3">
+          {!embedded && <p className="text-xs uppercase tracking-[0.24em] text-gray-500">{storeName}</p>}
+          <h2 className={`${embedded ? '' : 'mt-2'} text-lg font-semibold flex items-center gap-3`}>
             Camera: <span className="text-blue-400">{cameraId}</span>
           </h2>
         </div>
-        <button
-          onClick={() => setDrawMode(!drawMode)}
-          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-            drawMode
-              ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-              : 'bg-blue-600 hover:bg-blue-500 text-white'
-          }`}
-        >
-          {drawMode ? 'Exit Zone Drawing' : 'Draw Zones'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setDrawMode(!drawMode)}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              drawMode
+                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
+          >
+            {drawMode ? 'Exit Zone Drawing' : 'Draw Zones'}
+          </button>
+          {embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded text-sm font-medium transition-colors bg-gray-800 hover:bg-gray-700 text-white"
+            >
+              Done
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Feed + zone canvas in same relative container */}
@@ -155,6 +178,10 @@ export default function CameraSetup({ camera, storeName, onZoneChange }: CameraS
                 <p className="text-xs text-gray-500">
                   Type: {zoneTypeLabel(zone.type)} | Points: {zone.polygon.length}
                 </p>
+                <p className="mt-1 text-xs text-teal-300">
+                  Layout: {businessZoneLabel(zone.business_zone_type)}
+                  {zone.promo_zone_flag ? ' | Promo' : ''}
+                </p>
               </div>
             ))}
           </div>
@@ -165,7 +192,7 @@ export default function CameraSetup({ camera, storeName, onZoneChange }: CameraS
         <div className="text-center text-gray-500 py-8 border border-dashed border-gray-800 rounded-lg">
           <p>No zones configured for this camera.</p>
           <p className="text-sm mt-1">
-            Click <strong>"Draw Zones"</strong> to add entry, exit, bidirectional, or restricted zones.
+            Click <strong>"Draw Zones"</strong> to add entry, exit, aisle, counter, checkout, or restricted zones.
           </p>
         </div>
       )}

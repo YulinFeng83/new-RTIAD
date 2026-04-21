@@ -21,10 +21,17 @@ from src.camera.stream import VideoStream
 from src.analytics.group_likelihood import GroupLikelihoodEngine
 from src.config import AppConfig
 from src.counting.footfall_counter import FootfallCounter
-from src.events.types import BaseEvent, FootfallUpdate
+from src.events.typed_events import (
+    ZoneExitedEvent,
+    format_event_time,
+)
 from src.events.event_hub import EventHubProducer
 from src.models.employee_classifier import EmployeeClassifier
+from src.position.floor_position_sampler import FloorCoordinateMapper, FloorPositionSampler
+from src.reid.appearance_embedder import AppearanceEmbedder
 from src.rendering.overlay import OverlayRenderer
+from src.sessions.visit_session_manager import VisitSessionManager
+from src.stitching.cross_camera_stitcher import CrossCameraStitcher
 from src.tracking.track import Track
 from src.tracking.tracker import PersonTracker
 from src.zones.crossing_detector import CrossingResult
@@ -51,6 +58,11 @@ class CameraPipeline:
         footfall_counter: FootfallCounter,
         overlay_renderer: OverlayRenderer,
         event_hub: EventHubProducer,
+        visit_session_manager: VisitSessionManager,
+        cross_camera_stitcher: CrossCameraStitcher,
+        appearance_embedder: AppearanceEmbedder,
+        floor_coordinate_mapper: FloorCoordinateMapper | None,
+        floor_position_sampler: FloorPositionSampler | None,
         config: AppConfig,
     ):
         self.camera_id = camera_id
@@ -61,6 +73,11 @@ class CameraPipeline:
         self._footfall = footfall_counter
         self._overlay = overlay_renderer
         self._event_hub = event_hub
+        self._visit_sessions = visit_session_manager
+        self._stitcher = cross_camera_stitcher
+        self._appearance_embedder = appearance_embedder
+        self._floor_coordinate_mapper = floor_coordinate_mapper
+        self._floor_position_sampler = floor_position_sampler
         self._config = config
         self._group_engine = GroupLikelihoodEngine(
             threshold=0.5,
@@ -149,7 +166,34 @@ class CameraPipeline:
         camera_store_id = self._camera_store_id()
 
         active_tracks = self._tracker.update(frame, frame_id)
+        self._appearance_embedder.update_tracks(active_tracks, frame, ts)
+        # TEMP OSNet verification instrumentation: remove after re-ID wiring is validated.
+        for track in active_tracks:
+            embedding_len = len(track.appearance_embedding) if track.appearance_embedding else 0
+            has_embedding = embedding_len > 0
+            logger.info(
+                "[%s] TEMP OSNet embedding check track=%d present=%s length=%d model=%s updated_at=%s",
+                self.camera_id,
+                track.track_id,
+                has_embedding,
+                embedding_len,
+                track.appearance_embedding_model,
+                track.appearance_embedding_updated_at,
+            )
+            if self._config.reid.enabled and not has_embedding:
+                logger.warning(
+                    "[%s] TEMP OSNet embedding missing for visible active track=%d while reid.enabled=true",
+                    self.camera_id,
+                    track.track_id,
+                )
+        lost_tracks = [
+            self._tracker.tracks[track_id]
+            for track_id in self._tracker.lost_track_ids
+            if track_id in self._tracker.tracks
+        ]
+        self._stitcher.remember_lost_tracks(self.camera_id, lost_tracks)
         self._update_track_behavior_context(active_tracks, ts, frame_id)
+        self._update_calibrated_floor_positions(active_tracks)
 
         # Fire-and-forget CLIP classification in background thread
         context: dict[str, Any] = {
@@ -164,6 +208,13 @@ class CameraPipeline:
         )
 
         self._apply_group_assignments(active_tracks, ts)
+        self._stitcher.try_link_new_tracks(
+            self.camera_id,
+            active_tracks,
+            ts,
+            group_visitor_count=1,
+        )
+        self._refresh_visit_snapshots(active_tracks, ts)
 
         for track, event_data in self._zone_manager.check_crossings(active_tracks, self.camera_id):
             event_timestamp = float(event_data.get("timestamp", ts))
@@ -177,45 +228,68 @@ class CameraPipeline:
             raw_direction = event_data.get("direction")
             raw_zone_session_id = event_data.get("zone_session_id")
 
-            base_event = BaseEvent(
-                event_id=self._make_event_id(
-                    event_type=raw_event_type,
-                    track=track,
-                    timestamp=event_timestamp,
-                    zone_session_id=raw_zone_session_id,
-                    zone_id=zone_id,
-                ),
-                event_type=raw_event_type,
-                tenant_id=self._config.store.tenant_id,
-                store_id=camera_store_id,
-                camera_id=self.camera_id,
-                timestamp=event_timestamp,
-                track_id=track.track_id,
-                store_visit_session_id=track.store_visit_session_id,
-                previous_group_id=track.previous_group_id,
-                group_id=track.group_id,
-                zone_id=zone_id,
-                direction=raw_direction,
-                classification_label=track.label.value,
-                employee_probability=track.employee_probability,
-                customer_probability=track.customer_probability,
-                unknown_probability=track.unknown_probability,
-                group_probability=track.group_probability,
-                dwell_seconds=dwell_seconds,
-                zone_session_id=raw_zone_session_id,
-                has_dwell_flag=bool(event_data.get("has_dwell_flag", dwell_seconds > 0.0)),
-                window_start=self._window_start(event_timestamp),
-                window_end=self._window_end(event_timestamp),
-                group_visitor_count=self._group_visitor_count(track, active_tracks),
-                zone_visitors=int(event_data.get("zone_visitors", 0)),
-                max_dwell_bucket=self._dwell_bucket(dwell_seconds),
-                promo_zone_flag=zone_id in self._config.store.promo_zone_ids,
-            )
             if raw_event_type == "zone_exited":
-                self._event_hub.send(base_event)
+                entered_at = event_data.get("entered_at")
+                if entered_at is None:
+                    logger.warning(
+                        "[%s] Skipping zone_exited for track %d zone %s: missing entered_at",
+                        self.camera_id,
+                        track.track_id,
+                        zone_id,
+                    )
+                else:
+                    visit = self._visit_sessions.record_zone_exit(self.camera_id, track, dwell_seconds)
+                    if visit is None:
+                        logger.info(
+                            "[%s] Skipping typed zone_exited for track %d zone %s: no active store visit",
+                            self.camera_id,
+                            track.track_id,
+                            zone_id,
+                        )
+                        continue
+                    self._event_hub.send(ZoneExitedEvent(
+                        visit_id=str(raw_zone_session_id or self._make_event_id(
+                            event_type="zone_exited",
+                            track=track,
+                            timestamp=event_timestamp,
+                            zone_id=zone_id,
+                        )),
+                        zone_id=zone_id,
+                        store_id=camera_store_id,
+                        camera_id=self.camera_id,
+                        store_visit_id=visit.store_visit_id,
+                        dwell_seconds=dwell_seconds,
+                        max_dwell_bucket=self._dwell_bucket(dwell_seconds),
+                        entered_at=format_event_time(float(entered_at)),
+                        exited_at=format_event_time(event_timestamp),
+                        classification_label=track.label.value,
+                        max_employee_probability=track.max_employee_probability,
+                        edge_emitted_at=format_event_time(time.time()),
+                    ))
 
             if raw_event_type == "door_crossed":
-                crossing = CrossingResult(zone_id=zone_id, direction=raw_direction or "entering")
+                if raw_direction is None:
+                    logger.warning(
+                        "[%s] Skipping door_crossed for track %d zone %s: missing direction",
+                        self.camera_id,
+                        track.track_id,
+                        zone_id,
+                    )
+                    continue
+
+                door_event = self._visit_sessions.record_door_crossing(
+                    store_id=camera_store_id,
+                    camera_id=self.camera_id,
+                    track=track,
+                    zone=zone,
+                    direction=str(raw_direction),
+                    crossed_at=event_timestamp,
+                    group_visitor_count=self._group_visitor_count(track, active_tracks),
+                )
+                if door_event is not None:
+                    self._event_hub.send(door_event)
+
+                crossing = CrossingResult(zone_id=zone_id, direction=str(raw_direction))
                 ff_event = self._footfall.process_crossing(
                     camera_store_id,
                     track,
@@ -231,36 +305,8 @@ class CameraPipeline:
                     elif ff_event.event_type == "entry":
                         track.mark_store_entry(ff_event.zone_id, event_timestamp)
                         track.clear_pending_exit()
-                    self._event_hub.send(FootfallUpdate(
-                        event_id=self._make_event_id(
-                            event_type="footfall_updated",
-                            track=track,
-                            timestamp=event_timestamp,
-                            zone_session_id=raw_zone_session_id,
-                            zone_id=zone_id,
-                        ),
-                        event_type="footfall_updated",
-                        tenant_id=self._config.store.tenant_id,
-                        store_id=camera_store_id,
-                        camera_id=self.camera_id,
-                        track_id=track.track_id,
-                        store_visit_session_id=track.store_visit_session_id,
-                        previous_group_id=track.previous_group_id,
-                        group_id=track.group_id,
-                        group_probability=track.group_probability,
-                        counting_event_type=ff_event.event_type,
-                        entry_delta=ff_event.entry_delta,
-                        exit_delta=ff_event.exit_delta,
-                        source_zone_id=ff_event.zone_id,
-                        source_direction=ff_event.direction,
-                        zone_session_id=ff_event.zone_session_id,
-                        total_entries=ff_event.stats_snapshot.get("total_entries", 0),
-                        total_exits=ff_event.stats_snapshot.get("total_exits", 0),
-                        current_in_store=ff_event.stats_snapshot.get("current_in_store", 0),
-                        employees_filtered=ff_event.stats_snapshot.get("employees_filtered", 0),
-                        shopping_party_entries=ff_event.stats_snapshot.get("shopping_party_entries", 0),
-                        timestamp=event_timestamp,
-                    ))
+
+        self._emit_floor_position_samples(active_tracks, camera_store_id, ts)
 
         self._emit_completed_sessions(ts)
 
@@ -298,6 +344,47 @@ class CameraPipeline:
             track.refresh_session_activity(timestamp)
             track.derived_features["pre_open_entry_flag"] = pre_open_flag
             track.derived_features["first_n_entries_flag"] = first_n_entries_flag
+
+    def _refresh_visit_snapshots(self, tracks: list[Track], timestamp: float) -> None:
+        store_id = self._camera_store_id()
+        for track in tracks:
+            self._visit_sessions.refresh_track(
+                store_id=store_id,
+                camera_id=self.camera_id,
+                track=track,
+                timestamp=timestamp,
+                group_visitor_count=self._group_visitor_count(track, tracks),
+            )
+
+    def _update_calibrated_floor_positions(self, tracks: list[Track]) -> None:
+        for track in tracks:
+            bbox = track.current_bbox
+            if bbox is None:
+                self._clear_floor_features(track)
+                continue
+
+            x1, _y1, x2, y2 = bbox
+            foot_point = (int(round((x1 + x2) / 2.0)), int(round(y2)))
+            track.derived_features["image_footpoint_x"] = float(foot_point[0])
+            track.derived_features["image_footpoint_y"] = float(foot_point[1])
+
+            if self._floor_coordinate_mapper is None:
+                self._clear_floor_features(track)
+                continue
+
+            floor_point = self._floor_coordinate_mapper.image_to_floor(self.camera_id, foot_point)
+            if floor_point is None:
+                self._clear_floor_features(track)
+                continue
+
+            track.derived_features["floor_x"] = float(floor_point[0])
+            track.derived_features["floor_y"] = float(floor_point[1])
+            track.derived_features["floor_position_calibrated"] = 1.0
+
+    def _clear_floor_features(self, track: Track) -> None:
+        track.derived_features.pop("floor_x", None)
+        track.derived_features.pop("floor_y", None)
+        track.derived_features.pop("floor_position_calibrated", None)
 
     def _pre_open_entry_flag(self, timestamp: float) -> float:
         now = datetime.fromtimestamp(timestamp)
@@ -339,69 +426,28 @@ class CameraPipeline:
                 )
 
     def _emit_completed_sessions(self, timestamp: float) -> None:
-        for track in self._tracker.tracks.values():
-            if track.session_completed_emitted:
-                continue
-
-            completed_at: float | None = None
-            completion_reason: str | None = None
-            if (
-                track.pending_exit_at is not None
-                and track.last_exit_seen_at is not None
-                and timestamp >= track.pending_exit_at
-                and track.last_seen <= track.last_exit_seen_at
-            ):
-                completed_at = track.pending_exit_at
-                completion_reason = "exit_confirmed"
-            elif (not track.is_active) and (timestamp - track.last_seen >= self._track_lost_timeout_seconds):
-                completed_at = track.last_seen + self._track_lost_timeout_seconds
-                completion_reason = "track_lost_timeout"
-
-            if completed_at is None:
-                continue
-
-            track.mark_session_completed(completed_at)
-            self._event_hub.send(BaseEvent(
-                event_id=self._make_event_id(
-                    event_type="session_completed",
-                    track=track,
-                    timestamp=completed_at,
-                    suffix=track.store_visit_session_id,
-                ),
-                event_type="session_completed",
-                tenant_id=self._config.store.tenant_id,
-                store_id=self._camera_store_id(),
-                camera_id=self.camera_id,
-                timestamp=completed_at,
-                track_id=track.track_id,
-                store_visit_session_id=track.store_visit_session_id,
-                previous_group_id=track.previous_group_id,
-                group_id=track.group_id,
-                classification_label=track.label.value,
-                employee_probability=track.employee_probability,
-                customer_probability=track.customer_probability,
-                unknown_probability=track.unknown_probability,
-                group_probability=track.group_probability,
-                window_start=self._window_start(completed_at),
-                window_end=self._window_end(completed_at),
-                session_completed_at=completed_at,
-                session_duration_seconds=max(0.0, completed_at - track.store_visit_started_at),
-                total_dwell_seconds=track.total_dwell_seconds,
-                session_entry_count=track.entry_count,
-                session_exit_count=track.exit_count,
-                visited_zones=list(track.zones_visited),
-                session_completion_reason=completion_reason,
-                final_group_id=track.group_id,
-                group_lineage=list(track.group_lineage),
-                split_detected_flag=track.split_detected_flag,
-                regroup_detected_flag=track.regroup_detected_flag,
-                merge_detected_flag=track.merge_detected_flag,
-                entry_zone_id=track.store_entry_zone_id,
-                exit_zone_id=track.store_exit_zone_id,
-                entry_timestamp=track.store_entry_at,
-                exit_timestamp=track.store_exit_at,
-                zone_dwell_map=dict(track.zone_dwell_seconds),
-            ))
+        completed = self._visit_sessions.close_due_visits(
+            camera_id=self.camera_id,
+            tracks=self._tracker.tracks,
+            timestamp=timestamp,
+            inactivity_timeout_seconds=self._track_lost_timeout_seconds,
+        )
+        for visit, track in completed:
+            self._event_hub.send(self._visit_sessions.to_session_completed_event(visit))
+            self._visit_sessions.mark_completion_emitted(visit)
+            if self._floor_position_sampler is not None:
+                self._floor_position_sampler.forget_visit(visit.store_visit_id)
+            if track is not None:
+                track.mark_session_completed(visit.closed_at or timestamp)
+            try:
+                if track is not None and hasattr(self._tracker, "retire_track"):
+                    self._tracker.retire_track(track.track_id)
+            except Exception:
+                logger.exception(
+                    "[%s] Failed to retire track after session_completed for visit %s",
+                    self.camera_id,
+                    visit.store_visit_id,
+                )
 
     def _camera_store_id(self) -> str:
         return next(
@@ -412,6 +458,38 @@ class CameraPipeline:
             ),
             self._config.store.store_id,
         )
+
+    def _emit_floor_position_samples(
+        self,
+        tracks: list[Track],
+        store_id: str,
+        timestamp: float,
+    ) -> None:
+        if self._floor_position_sampler is None:
+            return
+
+        for track in tracks:
+            if track.derived_features.get("floor_position_calibrated") != 1.0:
+                continue
+            visit = self._visit_sessions.active_visit_for_track(self.camera_id, track.track_id)
+            if visit is None:
+                continue
+
+            event = self._floor_position_sampler.maybe_sample(
+                store_id=store_id,
+                camera_id=self.camera_id,
+                zone_id=self._current_zone_id(track),
+                track=track,
+                visit=visit,
+                emitted_at=timestamp,
+            )
+            if event is not None:
+                self._event_hub.send(event)
+
+    def _current_zone_id(self, track: Track) -> str | None:
+        if not track.zone_entry_times:
+            return None
+        return max(track.zone_entry_times.items(), key=lambda item: item[1])[0]
 
     def _make_event_id(
         self,

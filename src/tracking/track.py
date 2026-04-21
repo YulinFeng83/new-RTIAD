@@ -63,6 +63,7 @@ class Track:
     employee_probability: float = 0.0
     customer_probability: float = 0.0
     unknown_probability: float = 1.0
+    max_employee_probability: float = 0.0
 
     group_id: str | None = None
     previous_group_id: str | None = None
@@ -79,6 +80,9 @@ class Track:
     store_exit_at: float | None = None
 
     clip_signals: dict[str, float] = field(default_factory=dict)
+    appearance_embedding: list[float] | None = None
+    appearance_embedding_updated_at: float | None = None
+    appearance_embedding_model: str | None = None
     derived_features: dict[str, float] = field(default_factory=dict)
     decision_reasons: list[str] = field(default_factory=list)
 
@@ -228,7 +232,7 @@ class Track:
         self.zone_visit_counts[zone_id] = visit_count
         self.entry_count += 1
         self.mark_zone_entered(zone_id, ts)
-        session_id = f"zsess-{zone_id}-{visit_count:03d}"
+        session_id = f"zvisit-{self.camera_id}-{self.track_id}-{zone_id}-{visit_count:03d}-{int(ts * 1000)}"
         self.active_zone_session_ids[zone_id] = session_id
         return session_id
 

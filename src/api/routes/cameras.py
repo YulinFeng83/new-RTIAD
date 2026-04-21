@@ -33,9 +33,11 @@ async def list_cameras():
                     id=z.zone_id,
                     camera_id=z.camera_id,
                     type=z.zone_type.value,
+                    business_zone_type=z.business_zone_type,
                     polygon=[[p[0], p[1]] for p in z.polygon],
                     direction=list(z.direction_vector),
                     name=z.name,
+                    promo_zone_flag=z.promo_zone_flag,
                 )
                 for z in zones
             ],
@@ -55,17 +57,21 @@ async def create_zone(camera_id: str, req: ZoneCreateRequest):
         camera_id=camera_id,
         polygon=[(p[0], p[1]) for p in req.polygon],
         zone_type=ZoneType(req.type),
+        business_zone_type=req.business_zone_type,
         direction_vector=(req.direction[0], req.direction[1]) if len(req.direction) >= 2 else (0.0, -1.0),
         name=req.name,
+        promo_zone_flag=req.promo_zone_flag,
     )
     app_state.zone_manager.add_zone(zone)
 
     z_cfg = ZoneConfig(
         id=req.id,
         type=req.type,
+        business_zone_type=req.business_zone_type,
         polygon=req.polygon,
         direction=req.direction,
         name=req.name,
+        promo_zone_flag=req.promo_zone_flag,
     )
     for cam in config.cameras:
         if cam.id == camera_id:
@@ -79,9 +85,11 @@ async def create_zone(camera_id: str, req: ZoneCreateRequest):
         id=zone.zone_id,
         camera_id=zone.camera_id,
         type=zone.zone_type.value,
+        business_zone_type=zone.business_zone_type,
         polygon=req.polygon,
         direction=list(zone.direction_vector),
         name=zone.name,
+        promo_zone_flag=zone.promo_zone_flag,
     )
 
 

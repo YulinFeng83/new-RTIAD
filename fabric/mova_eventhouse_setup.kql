@@ -1,0 +1,189 @@
+// MOVA Eventhouse raw/fact contract.
+// Raw tables are unfiltered source of truth. Update policies filter customer facts.
+
+.create-merge table sessions_raw (
+  event_type:string,
+  store_visit_id:string,
+  store_id:string,
+  track_id:string,
+  classification_label:string,
+  max_employee_probability:real,
+  last_group_id:string,
+  group_visitor_count:int,
+  group_was_active_at_exit:bool,
+  segment_count:int,
+  close_reason:string,
+  session_duration_seconds:real,
+  total_dwell_seconds:real,
+  session_entry_count:int,
+  session_exit_count:int,
+  session_completed_at:datetime,
+  edge_emitted_at:datetime
+)
+
+.create-merge table zone_exits_raw (
+  event_type:string,
+  visit_id:string,
+  zone_id:string,
+  store_id:string,
+  camera_id:string,
+  store_visit_id:string,
+  dwell_seconds:real,
+  max_dwell_bucket:string,
+  entered_at:datetime,
+  exited_at:datetime,
+  classification_label:string,
+  max_employee_probability:real,
+  edge_emitted_at:datetime
+)
+
+.create-merge table door_crossings_raw (
+  event_type:string,
+  crossing_id:string,
+  store_id:string,
+  camera_id:string,
+  store_visit_id:string,
+  direction:string,
+  crossed_at:datetime,
+  classification_label:string,
+  max_employee_probability:real,
+  edge_emitted_at:datetime
+)
+
+.create-merge table floor_positions_raw (
+  event_type:string,
+  position_id:string,
+  store_visit_id:string,
+  store_id:string,
+  zone_id:string,
+  track_id:string,
+  seq:int,
+  floor_x:real,
+  floor_y:real,
+  emitted_at:datetime,
+  classification_label:string,
+  max_employee_probability:real,
+  edge_emitted_at:datetime
+)
+
+.create-merge table fact_sessions (
+  store_visit_id:string,
+  store_id:string,
+  date_id:date,
+  track_id:string,
+  classification_label:string,
+  last_group_id:string,
+  group_visitor_count:int,
+  group_was_active_at_exit:bool,
+  segment_count:int,
+  close_reason:string,
+  session_duration_seconds:real,
+  total_dwell_seconds:real,
+  session_entry_count:int,
+  session_exit_count:int
+)
+
+.create-merge table fact_zone_visits (
+  visit_id:string,
+  zone_id:string,
+  store_id:string,
+  camera_id:string,
+  date_id:date,
+  store_visit_id:string,
+  dwell_seconds:real,
+  max_dwell_bucket:string,
+  entered_at:datetime,
+  exited_at:datetime
+)
+
+.create-merge table fact_door_crossings (
+  crossing_id:string,
+  store_id:string,
+  camera_id:string,
+  date_id:date,
+  store_visit_id:string,
+  direction:string,
+  crossed_at:datetime
+)
+
+.create-merge table fact_floor_positions (
+  position_id:string,
+  store_visit_id:string,
+  store_id:string,
+  zone_id:string,
+  date_id:date,
+  track_id:string,
+  seq:int,
+  floor_x:real,
+  floor_y:real,
+  emitted_at:datetime
+)
+
+.create-or-alter function with (folder='mova/update_policies') sessions_raw_to_fact() {
+  sessions_raw
+  | where event_type == 'session_completed'
+  | where max_employee_probability < 0.5
+  | project
+      store_visit_id,
+      store_id,
+      date_id = startofday(session_completed_at),
+      track_id,
+      classification_label,
+      last_group_id,
+      group_visitor_count,
+      group_was_active_at_exit,
+      segment_count,
+      close_reason,
+      session_duration_seconds,
+      total_dwell_seconds,
+      session_entry_count,
+      session_exit_count
+}
+
+.create-or-alter function with (folder='mova/update_policies') zone_exits_raw_to_fact() {
+  zone_exits_raw
+  | where event_type == 'zone_exited'
+  | where max_employee_probability < 0.5
+  | project
+      visit_id,
+      zone_id,
+      store_id,
+      camera_id,
+      date_id = startofday(exited_at),
+      store_visit_id,
+      dwell_seconds,
+      max_dwell_bucket,
+      entered_at,
+      exited_at
+}
+
+.create-or-alter function with (folder='mova/update_policies') door_crossings_raw_to_fact() {
+  door_crossings_raw
+  | where event_type == 'door_crossed'
+  | where max_employee_probability < 0.5
+  | project
+      crossing_id,
+      store_id,
+      camera_id,
+      date_id = startofday(crossed_at),
+      store_visit_id,
+      direction,
+      crossed_at
+}
+
+.create-or-alter function with (folder='mova/update_policies') floor_positions_raw_to_fact() {
+  floor_positions_raw
+  | where event_type == 'floor_position_sample'
+  | where max_employee_probability < 0.5
+  | project
+      position_id,
+      store_visit_id,
+      store_id,
+      zone_id,
+      date_id = startofday(emitted_at),
+      track_id,
+      seq,
+      floor_x,
+      floor_y,
+      emitted_at
+}

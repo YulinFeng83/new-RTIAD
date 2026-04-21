@@ -122,6 +122,7 @@ class EmployeeClassifier:
             track.employee_probability = decision["employee_probability"]
             track.customer_probability = decision["customer_probability"]
             track.unknown_probability = decision["unknown_probability"]
+            track.max_employee_probability = max(track.max_employee_probability, track.employee_probability)
             track.decision_reasons = decision["top_signals"]
             track.derived_features["reason_summary"] = decision["reason_summary"]
             track.label_confidence = max(

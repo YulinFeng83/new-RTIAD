@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import CameraSetup from './pages/CameraSetup'
-import LiveFeed from './components/LiveFeed'
+import { useMemo, useState } from 'react'
+import CalibrationWorkbench from './components/CalibrationWorkbench'
+import LiveCameraBlueprintGrid from './components/LiveCameraBlueprintGrid'
 import StoreOverview, { type StoreMetrics } from './components/StoreOverview'
 import StoreSelector from './components/StoreSelector'
 import { type StoreAlert } from './components/StoreAlerts'
-import { useStoreContext, type CameraInfo } from './store-context'
+import { useStoreContext } from './store-context'
 import './index.css'
 
-type View = 'grid' | 'setup'
-
 function App() {
-  const [view, setView] = useState<View>('grid')
-  const [setupCameraId, setSetupCameraId] = useState<string>('')
   const {
     filteredCameras,
     filteredFootfall,
@@ -21,8 +17,8 @@ function App() {
     loading,
     refreshData,
     setSelectedStoreId,
-    getCameraById,
   } = useStoreContext()
+  const [workspaceMode, setWorkspaceMode] = useState<'stage1' | 'stage2'>('stage1')
 
   const storeAlerts = useMemo<StoreAlert[]>(() => {
     const alerts: StoreAlert[] = []
@@ -63,31 +59,6 @@ function App() {
     }
   }, [filteredCameras, filteredFootfall])
 
-  useEffect(() => {
-    if (!setupCameraId) {
-      return
-    }
-
-    const setupCamera = getCameraById(setupCameraId)
-    if (!setupCamera || setupCamera.store_id !== selectedStoreId) {
-      setSetupCameraId('')
-      setView('grid')
-    }
-  }, [getCameraById, selectedStoreId, setupCameraId])
-
-  const openSetup = (camId: string) => {
-    setSetupCameraId(camId)
-    setView('setup')
-  }
-
-  const backToGrid = () => {
-    setView('grid')
-    setSetupCameraId('')
-    void refreshData()
-  }
-
-  const selectedCamera = setupCameraId ? getCameraById(setupCameraId) : undefined
-
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <header className="border-b border-gray-800 px-6 py-4">
@@ -96,14 +67,6 @@ function App() {
             <h1 className="text-xl font-bold tracking-tight">
               RetailVision <span className="text-blue-400 text-sm font-normal ml-2">Admin</span>
             </h1>
-            {view === 'setup' && (
-              <button
-                onClick={backToGrid}
-                className="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded px-3 py-1.5 transition-colors"
-              >
-                &larr; Store Dashboard
-              </button>
-            )}
           </div>
           <StoreSelector
             stores={stores}
@@ -120,14 +83,14 @@ function App() {
           <div className="text-center text-gray-500 mt-20">
             <p className="text-lg">Loading store dashboard...</p>
           </div>
-        ) : filteredCameras.length === 0 && view === 'grid' ? (
+        ) : filteredCameras.length === 0 ? (
           <div className="text-center text-gray-500 mt-20">
             <p className="text-lg">No cameras configured for {selectedStoreName}.</p>
             <p className="text-sm mt-2">
               Add cameras in <code className="text-blue-400">config/default_config.yaml</code> and restart the backend.
             </p>
           </div>
-        ) : view === 'grid' ? (
+        ) : (
           <div className="space-y-6">
             <StoreOverview
               storeName={selectedStoreName}
@@ -135,71 +98,56 @@ function App() {
               alerts={storeAlerts}
               hasScopedFootfall={filteredFootfall !== null}
             />
-            <MultiCameraGrid cameras={filteredCameras} onSelectCamera={openSetup} />
+            <section className="rounded border border-gray-800 bg-gray-900 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-100">Spatial Workflow</h2>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Stage 1 builds the shared blueprint. Stage 2 calibrates each camera against that blueprint.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setWorkspaceMode('stage1')}
+                    className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+                      workspaceMode === 'stage1'
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-700 bg-gray-800 text-gray-100 hover:bg-gray-700'
+                    }`}
+                  >
+                    Stage 1 Store Map
+                  </button>
+                  <button
+                    onClick={() => setWorkspaceMode('stage2')}
+                    className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+                      workspaceMode === 'stage2'
+                        ? 'bg-teal-700 text-white'
+                        : 'border border-gray-700 bg-gray-800 text-gray-100 hover:bg-gray-700'
+                    }`}
+                  >
+                    Stage 2 Calibration
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {workspaceMode === 'stage1' ? (
+              <LiveCameraBlueprintGrid
+                cameras={filteredCameras}
+                storeId={selectedStoreId}
+                storeName={selectedStoreName}
+                onSaved={refreshData}
+              />
+            ) : (
+              <CalibrationWorkbench
+                cameras={filteredCameras}
+                storeId={selectedStoreId}
+                storeName={selectedStoreName}
+              />
+            )}
           </div>
-        ) : (
-          <CameraSetup
-            camera={selectedCamera}
-            storeName={selectedStoreName}
-            onZoneChange={refreshData}
-          />
         )}
       </main>
-    </div>
-  )
-}
-
-function MultiCameraGrid({
-  cameras,
-  onSelectCamera,
-}: {
-  cameras: CameraInfo[]
-  onSelectCamera: (id: string) => void
-}) {
-  const gridCols =
-    cameras.length === 1
-      ? 'grid-cols-1'
-      : cameras.length === 2
-      ? 'grid-cols-1 lg:grid-cols-2'
-      : cameras.length <= 4
-      ? 'grid-cols-1 md:grid-cols-2'
-      : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-
-  return (
-    <div className={`grid ${gridCols} gap-4`}>
-      {cameras.map((cam) => (
-        <div key={cam.id} className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">{cam.id}</span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  cam.scene_type === 'indoor'
-                    ? 'bg-blue-900 text-blue-300'
-                    : 'bg-green-900 text-green-300'
-                }`}
-              >
-                {cam.scene_type}
-              </span>
-              {cam.zones.length > 0 && (
-                <span className="text-xs text-gray-500">
-                  {cam.zones.length} zone{cam.zones.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => onSelectCamera(cam.id)}
-              className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded px-2.5 py-1 transition-colors"
-            >
-              Setup Zones
-            </button>
-          </div>
-          <LiveFeed
-            cameraId={cam.id}
-            className="w-full object-contain"
-          />
-        </div>
-      ))}
     </div>
   )
 }

@@ -1,0 +1,1 @@
+"""Floor coordinate sampling support."""

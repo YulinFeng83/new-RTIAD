@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -36,6 +37,7 @@ class SystemConfig(BaseModel):
 class ZoneConfig(BaseModel):
     id: str
     type: str = "bidirectional"
+    business_zone_type: str = "aisle"
     polygon: list[list[int]] = Field(default_factory=list)
     direction: list[float] = Field(default_factory=lambda: [0.0, -1.0])
     name: str = ""
@@ -53,6 +55,81 @@ class CameraConfig(BaseModel):
     zones: list[ZoneConfig] = Field(default_factory=list)
 
 
+class StoreFloorPlanConfig(BaseModel):
+    canvas_width: int = 1200
+    canvas_height: int = 800
+    store_width_meters: float | None = None
+    store_height_meters: float | None = None
+    scale_meters_per_pixel: float | None = None
+    origin: str = "bottom_left"
+
+
+class CameraArrangementConfig(BaseModel):
+    camera_id: str
+    canvas_x: float = 0.0
+    canvas_y: float = 0.0
+    canvas_width: float = 160.0
+    canvas_height: float = 100.0
+    floor_x: float | None = None
+    floor_y: float | None = None
+    position: str = ""
+    coverage_area: str = ""
+    rotation_degrees: float = 0.0
+    opacity: float = 0.75
+    z_index: int = 0
+    source_frame_width: int | None = None
+    source_frame_height: int | None = None
+
+
+class CameraAdjacencyConfig(BaseModel):
+    camera_a_id: str
+    camera_b_id: str
+    edge_a: str = ""
+    edge_b: str = ""
+    distance_pixels: float = 0.0
+    distance_meters: float | None = None
+
+
+class CameraOverlapConfig(BaseModel):
+    camera_a_id: str
+    camera_b_id: str
+    confirmed_overlap: bool = False
+    primary_camera_id: str = ""
+
+
+class FloorPlanZoneConfig(BaseModel):
+    id: str
+    zone_name: str = ""
+    zone_type: str = "aisle"
+    source_mode: str = "manual"
+    promo_zone_flag: bool = False
+    map_x: float = 0.0
+    map_y: float = 0.0
+    map_width: float = 0.0
+    map_height: float = 0.0
+    source_camera_id: str | None = None
+    source_zone_id: str | None = None
+    map_polygon: list[list[float]] = Field(default_factory=list)
+
+
+class CameraCalibrationConfig(BaseModel):
+    camera_id: str
+    reference_points_image: list[list[float]] = Field(default_factory=list)
+    reference_points_floor: list[list[float]] = Field(default_factory=list)
+    homography_matrix: list[list[float]] = Field(default_factory=list)
+    calibrated_at: datetime | None = None
+    active_flag: bool = False
+
+
+class SpatialConfig(BaseModel):
+    floor_plan: StoreFloorPlanConfig = Field(default_factory=StoreFloorPlanConfig)
+    camera_arrangement: list[CameraArrangementConfig] = Field(default_factory=list)
+    camera_adjacency: list[CameraAdjacencyConfig] = Field(default_factory=list)
+    camera_overlaps: list[CameraOverlapConfig] = Field(default_factory=list)
+    floor_zones: list[FloorPlanZoneConfig] = Field(default_factory=list)
+    camera_calibrations: list[CameraCalibrationConfig] = Field(default_factory=list)
+
+
 class DetectionConfig(BaseModel):
     model: str = "yolov8s.pt"
     confidence: float = 0.5
@@ -65,6 +142,16 @@ class TrackingConfig(BaseModel):
     group_rejoin_grace_seconds: int = 180
     exit_confirmation_cooldown_seconds: int = 30
     track_lost_timeout_seconds: int = 120
+
+
+class ReIDConfig(BaseModel):
+    enabled: bool = True
+    model: str = "osnet_x1_0"
+    model_path: str = ""
+    appearance_similarity_threshold: float = 0.78
+    min_stitch_score: float = 0.80
+    ambiguity_margin: float = 0.08
+    temporal_gate_seconds: float = 30.0
 
 
 class DressCodePrompts(BaseModel):
@@ -140,7 +227,9 @@ class AppConfig(BaseModel):
     employee_detection: EmployeeDetectionConfig = Field(
         default_factory=EmployeeDetectionConfig
     )
+    reid: ReIDConfig = Field(default_factory=ReIDConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
+    spatial: SpatialConfig = Field(default_factory=SpatialConfig)
     event_hub: EventHubConfig = Field(default_factory=EventHubConfig)
     overlay: OverlayConfig = Field(default_factory=OverlayConfig)
 

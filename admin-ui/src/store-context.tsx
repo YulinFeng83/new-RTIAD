@@ -10,9 +10,11 @@ export interface ZoneInfo {
   id: string
   camera_id: string
   type: string
+  business_zone_type?: string
   polygon: number[][]
   direction: number[]
   name: string
+  promo_zone_flag?: boolean
 }
 
 export interface CameraInfo {
@@ -88,7 +90,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const configStoreName = configData.store?.name || configStoreId
       setDefaultStoreId(configStoreId)
 
-      const normalizedCameras = cameraData
+      const normalizedCameras = cameraData.map((camera) => ({
+        ...camera,
+        store_id: camera.store_id || configStoreId,
+        store_name: camera.store_name || configStoreName,
+      }))
 
       const nextStores = Array.from(
         new Map(

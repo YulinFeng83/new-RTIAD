@@ -15,6 +15,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse, urlunparse, quote
 
 import cv2
 import numpy as np
@@ -150,10 +151,36 @@ class VideoStream:
             logger.error("[%s] Video file not found: %s", self.camera_id, src)
             return False
 
-        self._cap = cv2.VideoCapture(src)
-        if not self._cap.isOpened():
-            logger.error("[%s] Failed to open source: %s", self.camera_id, src)
-            return False
+        # For RTSP sources try multiple OpenCV backends (FFMPEG, GStreamer, then default)
+        if self._source_type == "rtsp":
+            src_to_open = self._sanitize_rtsp_url(src)
+            backends = [getattr(cv2, "CAP_FFMPEG", None), getattr(cv2, "CAP_GSTREAMER", None), None]
+            self._cap = None
+            for backend in backends:
+                try:
+                    logger.debug("[%s] Attempting open (backend=%s) %s", self.camera_id, backend, src_to_open)
+                    if backend is None:
+                        cap = cv2.VideoCapture(src_to_open)
+                    else:
+                        cap = cv2.VideoCapture(src_to_open, backend)
+                    if cap is not None and cap.isOpened():
+                        self._cap = cap
+                        logger.debug("[%s] Open succeeded with backend=%s", self.camera_id, backend)
+                        break
+                    else:
+                        if cap is not None:
+                            cap.release()
+                except Exception as exc:  # noqa: BLE001 - capture backend may raise
+                    logger.debug("[%s] Open attempt raised: %s", self.camera_id, exc)
+
+            if self._cap is None or not self._cap.isOpened():
+                logger.error("[%s] Failed to open source: %s", self.camera_id, src)
+                return False
+        else:
+            self._cap = cv2.VideoCapture(src)
+            if not self._cap.isOpened():
+                logger.error("[%s] Failed to open source: %s", self.camera_id, src)
+                return False
 
         self._native_fps = self._cap.get(cv2.CAP_PROP_FPS) or self._target_fps
         self._frame_width = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -167,6 +194,27 @@ class VideoStream:
             self._target_fps,
         )
         return True
+
+    def _sanitize_rtsp_url(self, url: str) -> str:
+        parsed = urlparse(url)
+        if not parsed.scheme or parsed.scheme.lower() not in {"rtsp", "http", "https"}:
+            return url
+
+        netloc = parsed.netloc
+        if "@" not in netloc:
+            return url
+
+        userinfo, hostport = netloc.split("@", 1)
+        if ":" in userinfo:
+            user, pwd = userinfo.split(":", 1)
+        else:
+            user, pwd = userinfo, ""
+
+        user_q = quote(user, safe="")
+        pwd_q = quote(pwd, safe="")
+        new_netloc = f"{user_q}:{pwd_q}@{hostport}" if pwd else f"{user_q}@{hostport}"
+        new = parsed._replace(netloc=new_netloc)
+        return urlunparse(new)
 
     def _release(self) -> None:
         if self._cap:

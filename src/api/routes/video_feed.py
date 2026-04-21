@@ -12,7 +12,7 @@ from typing import AsyncGenerator
 
 import cv2
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from src.api.deps import app_state
 
@@ -51,4 +51,34 @@ async def camera_feed(camera_id: str):
             "Expires": "0",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@router.get("/cameras/{camera_id}/snapshot")
+async def camera_snapshot(camera_id: str):
+    """Return the latest raw camera frame as a JPEG for layout building."""
+    if camera_id not in app_state.pipelines:
+        raise HTTPException(status_code=404, detail=f"Camera {camera_id} not found")
+
+    frame = None
+    if app_state.camera_manager is not None:
+        ok, raw_frame, _ = app_state.camera_manager.read_frame(camera_id)
+        if ok and raw_frame is not None:
+            frame = raw_frame
+
+    if frame is None:
+        pipeline = app_state.pipelines.get(camera_id)
+        frame = pipeline.get_annotated_frame() if pipeline else None
+
+    if frame is None:
+        raise HTTPException(status_code=404, detail=f"No frame available for camera {camera_id}")
+
+    ok, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    if not ok:
+        raise HTTPException(status_code=500, detail=f"Failed to encode snapshot for camera {camera_id}")
+
+    return Response(
+        content=buffer.tobytes(),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-store"},
     )
